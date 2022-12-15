@@ -24,6 +24,14 @@ jobs:
       - name: Build
         run: hugo --minify
 
+      - name: Algolia Index Uploader
+        uses: rxrw/algolia-index-uploader@v1
+        with:
+          index_path: 'public/index.json'
+          algolia_index_id: '4ZKRIKL2L6'
+          algolia_index_name: 'dev_lain'
+          algolia_index_admin_key: ${{ secrets.ALGOLIA_ADMIN_KEY }}
+
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         if: github.ref == 'refs/heads/main'

@@ -1,4 +1,4 @@
-baseURL = "http://example.org/"
+baseURL = "http://xuliangtang.github.io"
 
 # 更改使用 Hugo 构建网站时使用的默认主题
 theme = "LoveIt"
@@ -105,6 +105,27 @@ enableEmoji = true
     iconColor = "#5bbad5"
     # Windows v8-10磁贴颜色
     tileColor = "#da532c"
+
+  [params.search]
+    enable = true
+    # 搜索引擎的类型 ["lunr", "algolia"]
+    type = "algolia"
+    # 文章内容最长索引长度
+    contentLength = 4000
+    # 搜索框的占位提示语
+    placeholder = ""
+    # LoveIt 新增 | 0.2.1 最大结果数目
+    maxResultLength = 10
+    # LoveIt 新增 | 0.2.3 结果内容片段长度
+    snippetLength = 80
+    # LoveIt 新增 | 0.2.1 搜索结果中高亮部分的 HTML 标签
+    highlightTag = "em"
+    # LoveIt 新增 | 0.2.4 是否在搜索索引中使用基于 baseURL 的绝对路径
+    absoluteURL = false
+    [params.search.algolia]
+      index = "dev_lain"
+      appID = "4ZKRIKL2L6"
+      searchKey = "2da9b5e339083fde5fe030c2345f5499"
   
   [params.home]
     [params.home.profile]
@@ -124,9 +145,12 @@ enableEmoji = true
       # LoveIt 新增 | 0.2.0 免责声明 (支持 HTML 格式)
       disclaimer = ""
 
-    # 作者的社交信息设置
-    [params.social]
-      GitHub = "xuliangTang"
+  # 作者的社交信息设置
+  [params.social]
+    GitHub = "xuliangTang"
+
+[outputs]
+  home = ["HTML", "RSS", "JSON"]
 
 # Hugo 解析文档的配置
 [markup]
