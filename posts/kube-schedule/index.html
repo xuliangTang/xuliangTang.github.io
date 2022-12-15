@@ -1,333 +1,127 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="robots" content="noodp" />
-        <title>调度器 kube-schedule - Lain Blog</title><meta name="Description" content="This is my cool site"><meta property="og:title" content="调度器 kube-schedule" />
-<meta property="og:description" content="Kube-scheduler 是 Kubernetes 集群默认的调度器，并且是控制面中一个核心组件。scheduler 通过 kubernetes 的监测（Watch）机制来发现集群中新创建且尚未被调度到 Node 上的 P" />
-<meta property="og:type" content="article" />
-<meta property="og:url" content="http://example.org/posts/kube-schedule/" /><meta property="article:section" content="posts" />
-<meta property="article:published_time" content="2022-12-13T00:00:00+00:00" />
-<meta property="article:modified_time" content="2022-12-13T00:00:00+00:00" /><meta property="og:site_name" content="My cool site" />
-
-<meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="调度器 kube-schedule"/>
-<meta name="twitter:description" content="Kube-scheduler 是 Kubernetes 集群默认的调度器，并且是控制面中一个核心组件。scheduler 通过 kubernetes 的监测（Watch）机制来发现集群中新创建且尚未被调度到 Node 上的 P"/>
-<meta name="application-name" content="Lain Blog">
-<meta name="apple-mobile-web-app-title" content="Lain Blog"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="shortcut icon" type="image/x-icon" href="/favicons/favicon.ico" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/favicons/favicon-32x32.png">
-        <link rel="icon" type="image/png" sizes="16x16" href="/favicons/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="http://example.org/posts/kube-schedule/" /><link rel="prev" href="http://example.org/posts/hpa/" /><link rel="stylesheet" href="/css/style.min.css"><link rel="preload" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.1.1/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-        <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.1.1/css/all.min.css"></noscript><link rel="preload" href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-        <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css"></noscript><script type="application/ld+json">
-    {
-        "@context": "http://schema.org",
-        "@type": "BlogPosting",
-        "headline": "调度器 kube-schedule",
-        "inLanguage": "zh-CN",
-        "mainEntityOfPage": {
-            "@type": "WebPage",
-            "@id": "http:\/\/example.org\/posts\/kube-schedule\/"
-        },"genre": "posts","wordcount":  2316 ,
-        "url": "http:\/\/example.org\/posts\/kube-schedule\/","datePublished": "2022-12-13T00:00:00+00:00","dateModified": "2022-12-13T00:00:00+00:00","publisher": {
-            "@type": "Organization",
-            "name": ""},"author": {
-                "@type": "Person",
-                "name": "xuliangTang"
-            },"description": ""
-    }
-    </script></head>
-    <body data-header-desktop="fixed" data-header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
-
-        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
-    <div class="header-wrapper">
-        <div class="header-title">
-            <a href="/" title="Lain Blog">Dev Lain</a>
-        </div>
-        <div class="menu">
-            <div class="menu-inner"><a class="menu-item" href="/posts/"> 文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="Switch Theme">
-                    <i class="fas fa-adjust fa-fw" aria-hidden="true"></i>
-                </a></div>
-        </div>
-    </div>
-</header><header class="mobile" id="header-mobile">
-    <div class="header-container">
-        <div class="header-wrapper">
-            <div class="header-title">
-                <a href="/" title="Lain Blog">Dev Lain</a>
-            </div>
-            <div class="menu-toggle" id="menu-toggle-mobile">
-                <span></span><span></span><span></span>
-            </div>
-        </div>
-        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts/" title="">文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a href="javascript:void(0);" class="menu-item theme-switch" title="Switch Theme">
-                <i class="fas fa-adjust fa-fw" aria-hidden="true"></i>
-            </a></div>
-    </div>
-</header><main class="main">
-                <div class="container"><div class="toc" id="toc-auto">
-            <h2 class="toc-title">Contents</h2>
-            <div class="toc-content" id="toc-content-auto"></div>
-        </div><article class="page single"><h1 class="single-title animate__animated animate__flipInX">调度器 kube-schedule</h1><div class="post-meta">
-            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel="author" class="author"><i class="fas fa-user-circle fa-fw" aria-hidden="true"></i>xuliangTang</a></span>&nbsp;<span class="post-category">included in <a href="/categories/kubernetes/"><i class="far fa-folder fa-fw" aria-hidden="true"></i>kubernetes</a></span></div>
-            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw" aria-hidden="true"></i>&nbsp;<time datetime="2022-12-13">2022-12-13</time>&nbsp;<i class="fas fa-pencil-alt fa-fw" aria-hidden="true"></i>&nbsp;2316 words&nbsp;
-                <i class="far fa-clock fa-fw" aria-hidden="true"></i>&nbsp;5 minutes&nbsp;</div>
-        </div><div class="details toc" id="toc-static"  data-kept="">
-                <div class="details-summary toc-title">
-                    <span>Contents</span>
-                    <span><i class="details-icon fas fa-angle-right" aria-hidden="true"></i></span>
-                </div>
-                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
-  <ul>
-    <li><a href="#如何为-pod-选择节点">如何为 Pod 选择节点？</a></li>
-    <li><a href="#将-pod-指派给节点">将 Pod 指派给节点</a>
-      <ul>
-        <li><a href="#nodeselector">nodeSelector</a></li>
-        <li><a href="#节点亲和性-nodeaffinity">节点亲和性 nodeAffinity</a></li>
-        <li><a href="#节点污点和容忍度">节点污点和容忍度</a></li>
-        <li><a href="#pod-亲和性">Pod 亲和性</a></li>
-      </ul>
-    </li>
-  </ul>
-</nav></div>
-            </div><div class="content" id="content"><p>Kube-scheduler 是 Kubernetes 集群默认的调度器，并且是控制面中一个核心组件。scheduler 通过 kubernetes 的监测（Watch）机制来发现集群中新创建且尚未被调度到 Node 上的 Pod。 scheduler 会将发现的每一个未调度的 Pod 调度到一个合适的 Node 上来运行。 scheduler会依据下文的调度原则来做出调度选择。</p>
-<p><img
-        class="lazyload"
-        src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2393007-20220220103712446-1739360732.png"
-        data-srcset="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2393007-20220220103712446-1739360732.png, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2393007-20220220103712446-1739360732.png 1.5x, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2393007-20220220103712446-1739360732.png 2x"
-        data-sizes="auto"
-        alt="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2393007-20220220103712446-1739360732.png"
-        title="kube-scheduler" /></p>
-<p>对于新创建的 pod 或其他未调度的 pod来讲，kube-scheduler 选择一个最佳节点供它们运行。但是，Pod 中的每个容器对资源的要求都不同，每个 Pod 也有不同的要求。因此，需要根据具体的调度要求对现有节点进行过滤。</p>
-<p>在Kubernetes集群中，满足 Pod 调度要求的节点称为可行节点 （feasible nodes <em>FN</em>） 。如果没有合适的节点，则 pod 将保持未调度状态，直到调度程序能够放置它。也就是说，当我们创建 Pod 时，如果长期处于 Pending 状态，这个时候应该看你的集群调度器是否因为某些问题没有合适的节点了</p>
-<p>调度器为 Pod 找到 FN 后，然后运行一组函数对 FN 进行评分，并在 FN 中找到得分最高的节点来运行 Pod。</p>
-<p>调度策略在决策时需要考虑的因素包括个人和集体资源需求、硬件/软件/策略约束 （constraints）、亲和性 (affinity) 和反亲和性（ anti-affinity ）规范、数据局部性、工作负载间干扰等。</p>
-<p>基本调度流程：</p>
-<ul>
-<li>发布 Pod</li>
-<li>ControllerManager 会把 Pod 加入待调度队列</li>
-<li>kube-scheduler 决定调度到哪个 node，然后写入 etcd</li>
-<li>被选中节点中的 kubelet 开始工作（pull image、启动 Pod）</li>
-</ul>
-<h2 id="如何为-pod-选择节点">如何为 Pod 选择节点？</h2>
-<p>kube-scheduler 给一个 Pod 做调度选择时包含两个步骤：</p>
-<ul>
-<li>过滤 (Filtering)</li>
-<li>打分 (Scoring)</li>
-</ul>
-<p>过滤也被称为预选 （Predicates），该步骤会找到可调度的节点集，然后通过是否满足特定资源的请求，例如通过 PodFitsResources 过滤器检查候选节点是否有足够的资源来满足 Pod 资源的请求。这个步骤完成后会得到一个包含合适的节点的列表（通常为多个），如果列表为空，则Pod不可调度。</p>
-<p>打分也被称为优选（Priorities），在该步骤中，会对上一个步骤的输出进行打分，Scheduer 通过打分的规则为每个通过 Filtering 步骤的节点计算出一个分数。</p>
-<p>完成上述两个步骤之后，kube-scheduler 会将Pod分配给分数最高的 Node，如果存在多个相同分数的节点，会随机选择一个。</p>
-<p><img
-        class="lazyload"
-        src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/kube-scheduler-filter.jpg"
-        data-srcset="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/kube-scheduler-filter.jpg, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/kube-scheduler-filter.jpg 1.5x, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/kube-scheduler-filter.jpg 2x"
-        data-sizes="auto"
-        alt="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/kube-scheduler-filter.jpg"
-        title="kube-scheduler filter" /></p>
-<h2 id="将-pod-指派给节点">将 Pod 指派给节点</h2>
-<p>你可以约束一个 Pod 以便限制其只能在特定的节点上运行，或优先在特定的节点上运行。有几种方法可以实现这点，推荐的方法都是用标签选择算符来进行选择。 通常这样的约束不是必须的，因为调度器将自动进行合理的放置，但在某些情况下，你可能需要进一步控制 Pod 被部署到哪个节点。</p>
-<p>给节点 lain1 添加一个标签 disktype=ssd</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl label nodes lain1 <span class="nv">disktype</span><span class="o">=</span>ssd
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># 删除标签</span>
-</span></span><span class="line"><span class="cl">$ kubectl label nodes lain1 disktype-
-</span></span></code></pre></div><h3 id="nodeselector">nodeSelector</h3>
-<p>设置你希望目标节点所具有的节点标签。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">v1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Pod</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">nginx</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">containers</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">nginx</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">nginx</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">imagePullPolicy</span><span class="p">:</span><span class="w"> </span><span class="l">IfNotPresent</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">nodeSelector</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">disktype</span><span class="p">:</span><span class="w"> </span><span class="l">ssd	# 该Pod将被调度到有disktype=ssd标签的节点</span><span class="w">
-</span></span></span></code></pre></div><h3 id="节点亲和性-nodeaffinity">节点亲和性 nodeAffinity</h3>
-<p>节点亲和性有两种：</p>
-<ul>
-<li><strong>requiredDuringSchedulingIgnoredDuringExecution</strong>：调度器只有在规则被满足的时候才能执行调度。此功能类似于</li>
-<li><strong>preferredDuringSchedulingIgnoredDuringExecution</strong>：调度器会尝试寻找满足对应规则的节点。如果找不到匹配的节点，调度器仍然会调度该 Pod。</li>
-</ul>
-<h4 id="强制的节点亲和性调度">强制的节点亲和性调度</h4>
-<p>下面的 pod 只会调度到具有 disktype=ssd 标签的节点上</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">v1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Pod</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">nginx</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">affinity</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">nodeAffinity</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">requiredDuringSchedulingIgnoredDuringExecution</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">nodeSelectorTerms</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span>- <span class="nt">matchExpressions</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span>- <span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l">disktype</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">operator</span><span class="p">:</span><span class="w"> </span><span class="l">In</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">values</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span>- <span class="l">ssd            </span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">containers</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">nginx</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">nginx</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">imagePullPolicy</span><span class="p">:</span><span class="w"> </span><span class="l">IfNotPresent</span><span class="w">
-</span></span></span></code></pre></div><h4 id="首选的节点亲和性调度">首选的节点亲和性调度</h4>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">v1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Pod</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">nginx</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">affinity</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">nodeAffinity</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">preferredDuringSchedulingIgnoredDuringExecution</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">weight</span><span class="p">:</span><span class="w"> </span><span class="m">1</span><span class="w">	</span><span class="c"># 权重</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">preference</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">matchExpressions</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span>- <span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l">disktype</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">operator</span><span class="p">:</span><span class="w"> </span><span class="l">In</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">values</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span>- <span class="l">ssd          </span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">containers</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">nginx</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">nginx</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">imagePullPolicy</span><span class="p">:</span><span class="w"> </span><span class="l">IfNotPresent</span><span class="w">
-</span></span></span></code></pre></div><h3 id="节点污点和容忍度">节点污点和容忍度</h3>
-<p>节点亲和性使 Pod 被吸引到一类特定的节点，污点 (Taint) 则相反，它使节点能够排斥一类特定的 Pod。污点有三种类型：</p>
-<ul>
-<li><strong>NoSchedule</strong>：不会将 Pod 调度到该节点</li>
-<li><strong>PreferNoSchedule</strong>：尽量避免将 Pod 调度到该节点上</li>
-<li><strong>NoExecute</strong>：任何不能忍受这个污点的 Pod 都会马上被驱逐</li>
-</ul>
-<p>一些内置的污点：</p>
-<ul>
-<li>node.kubernetes.io/not-ready：节点未准备好。这相当于节点状况 Ready 的值为 False</li>
-<li>node.kubernetes.io/unreachable：节点控制器访问不到节点. 这相当于节点状况 Ready 的值为 Unknown</li>
-<li>node.kubernetes.io/memory-pressure：节点存在内存压力</li>
-<li>node.kubernetes.io/disk-pressure：节点存在磁盘压力</li>
-<li>node.kubernetes.io/pid-pressure: 节点的 PID 压力</li>
-<li>node.kubernetes.io/network-unavailable：节点网络不可用</li>
-<li>node.kubernetes.io/unschedulable: 节点不可调度</li>
-<li>node.cloudprovider.kubernetes.io/uninitialized：如果 kubelet 启动时指定了一个“外部”云平台驱动， 它将给当前节点添加一个污点将其标志为不可用。在 cloud-controller-manager 的一个控制器初始化这个节点后，kubelet 将删除这个污点</li>
-</ul>
-<p>容忍度 (Toleration) 是应用于 Pod 上的。容忍度允许调度器调度带有对应污点的 Pod。 容忍度允许调度但并不保证调度：作为其功能的一部分， 调度器也会评估其他参数。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># 查看节点的污点</span>
-</span></span><span class="line"><span class="cl">$ kubectl describe node lain1 <span class="p">|</span> grep Taints
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># 给节点打一个污点</span>
-</span></span><span class="line"><span class="cl">$ kubectl taint nodes lain1 <span class="nv">key1</span><span class="o">=</span>value1:NoSchedule
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># 删除污点</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># kubectl taint node lain1 key1:NoSchedule -</span>
-</span></span></code></pre></div><p>使用容忍</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">v1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Pod</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">nginx</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">containers</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">nginx</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">nginx</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">imagePullPolicy</span><span class="p">:</span><span class="w"> </span><span class="l">IfNotPresent</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">tolerations</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;key1&#34;</span><span class="w">		</span><span class="c"># 对应污点key</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">operator</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Equal&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;value1&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">effect</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;NoSchedule&#34;</span><span class="w">
-</span></span></span></code></pre></div><h3 id="pod-亲和性">Pod 亲和性</h3>
-<p>Pod 间亲和性与反亲和性使你可以基于已经在节点上运行的 Pod 的标签来约束 Pod 可以调度到的节点，而不是基于节点上的标签。</p>
-<blockquote>
-<p>Pod 亲和性和反亲和性都需要相当的计算量，因此会在大规模集群中显著降低调度速度。 不建议在包含数百个节点的集群中使用这类设置</p>
-</blockquote>
-<p>与节点亲和性类似，Pod 的亲和性与反亲和性也有两种类型：</p>
-<ul>
-<li><strong>requiredDuringSchedulingIgnoredDuringExecution</strong></li>
-<li><strong>preferredDuringSchedulingIgnoredDuringExecution</strong></li>
-</ul>
-<p>实例资源清单</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">apps/v1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Deployment</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">ngx1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">selector</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">matchLabels</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">ngx1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="m">1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">template</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">labels</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">ngx1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">nodeName</span><span class="p">:</span><span class="w"> </span><span class="l">lain1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">containers</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">ngx1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">nginx:1.18-alpine</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">imagePullPolicy</span><span class="p">:</span><span class="w"> </span><span class="l">IfNotPresent</span><span class="w">
-</span></span></span></code></pre></div><p>下面这个 Pod 必须调度到具有 disktype 标签的节点上，并且集群中至少有一个位于该可用区的节点上运行着带有 app=ngx1 标签的 Pod</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">apps/v1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Deployment</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">ngx2</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">selector</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">matchLabels</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">ngx2</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="m">1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">template</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">labels</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">ngx2</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">affinity</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">podAffinity</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">requiredDuringSchedulingIgnoredDuringExecution</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span>- <span class="nt">labelSelector</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="nt">matchExpressions</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">                  </span>- <span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l">app</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">                    </span><span class="nt">operator</span><span class="p">:</span><span class="w"> </span><span class="l">In</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">                    </span><span class="nt">values</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">                      </span>- <span class="l">ngx1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">              </span><span class="nt">topologyKey</span><span class="p">:</span><span class="w"> </span><span class="l">disktype</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">containers</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">ngx2</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">nginx:1.18-alpine</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">imagePullPolicy</span><span class="p">:</span><span class="w"> </span><span class="l">IfNotPresent</span><span class="w">
-</span></span></span></code></pre></div></div><div class="post-footer" id="post-footer">
-    <div class="post-info">
-        <div class="post-info-line">
-            <div class="post-info-mod">
-                <span>Updated on 2022-12-13</span>
-            </div></div>
-        <div class="post-info-line">
-            <div class="post-info-md"></div>
-            <div class="post-info-share">
-                <span><a href="javascript:void(0);" title="Share on Twitter" data-sharer="twitter" data-url="http://example.org/posts/kube-schedule/" data-title="调度器 kube-schedule"><i class="fab fa-twitter fa-fw" aria-hidden="true"></i></a><a href="javascript:void(0);" title="Share on Facebook" data-sharer="facebook" data-url="http://example.org/posts/kube-schedule/"><i class="fab fa-facebook-square fa-fw" aria-hidden="true"></i></a><a href="javascript:void(0);" title="Share on Hacker News" data-sharer="hackernews" data-url="http://example.org/posts/kube-schedule/" data-title="调度器 kube-schedule"><i class="fab fa-hacker-news fa-fw" aria-hidden="true"></i></a><a href="javascript:void(0);" title="Share on Line" data-sharer="line" data-url="http://example.org/posts/kube-schedule/" data-title="调度器 kube-schedule"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@7.3.0/icons/line.svg" aria-hidden="true"></i></a><a href="javascript:void(0);" title="Share on 微博" data-sharer="weibo" data-url="http://example.org/posts/kube-schedule/" data-title="调度器 kube-schedule"><i class="fab fa-weibo fa-fw" aria-hidden="true"></i></a></span>
-            </div>
-        </div>
-    </div>
-
-    <div class="post-info-more">
-        <section class="post-tags"></section>
-        <section>
-            <span><a href="javascript:void(0);" onclick="window.history.back();">Back</a></span>&nbsp;|&nbsp;<span><a href="/">Home</a></span>
-        </section>
-    </div>
-
-    <div class="post-nav"><a href="/posts/hpa/" class="prev" rel="prev" title="Pod 水平自动扩缩 — HPA"><i class="fas fa-angle-left fa-fw" aria-hidden="true"></i>Pod 水平自动扩缩 — HPA</a></div>
-</div>
-</article></div>
-            </main><footer class="footer">
-        <div class="footer-container"><div class="footer-line">Powered by <a href="https://gohugo.io/" target="_blank" rel="noopener noreffer" title="Hugo 0.101.0">Hugo</a> | Theme - <a href="https://github.com/dillonzq/LoveIt" target="_blank" rel="noopener noreffer" title="LoveIt 0.2.11"><i class="far fa-kiss-wink-heart fa-fw" aria-hidden="true"></i> LoveIt</a>
-                </div><div class="footer-line" itemscope itemtype="http://schema.org/CreativeWork"><i class="far fa-copyright fa-fw" aria-hidden="true"></i><span itemprop="copyrightYear">2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">xuliangTang</a></span></div>
-        </div>
-    </footer></div>
-
-        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="Back to Top">
-                <i class="fas fa-arrow-up fa-fw" aria-hidden="true"></i>
-            </a><a href="#" id="view-comments" class="fixed-button" title="View Comments">
-                <i class="fas fa-comment fa-fw" aria-hidden="true"></i>
-            </a>
-        </div><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.3.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.5.1/sharer.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"Copy to clipboard","maxShownLines":50},"comment":{}};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
-</html>
+<!doctype html><html lang=zh-cn><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=robots content="noodp"><title>调度器 kube-schedule - Lain Blog</title><meta name=Description content="This is my cool site"><meta property="og:title" content="调度器 kube-schedule"><meta property="og:description" content="Kube-scheduler 是 Kubernetes 集群默认的调度器，并且是控制面中一个核心组件。scheduler 通过 kubernetes 的监测（Watch）机制来发现集群中新创建且尚未被调度到 Node 上的 P"><meta property="og:type" content="article"><meta property="og:url" content="http://example.org/posts/kube-schedule/"><meta property="article:section" content="posts"><meta property="article:published_time" content="2022-12-13T00:00:00+00:00"><meta property="article:modified_time" content="2022-12-13T00:00:00+00:00"><meta property="og:site_name" content="My cool site"><meta name=twitter:card content="summary"><meta name=twitter:title content="调度器 kube-schedule"><meta name=twitter:description content="Kube-scheduler 是 Kubernetes 集群默认的调度器，并且是控制面中一个核心组件。scheduler 通过 kubernetes 的监测（Watch）机制来发现集群中新创建且尚未被调度到 Node 上的 P"><meta name=application-name content="Lain Blog"><meta name=apple-mobile-web-app-title content="Lain Blog"><meta name=theme-color content="#ffffff"><meta name=msapplication-TileColor content="#da532c"><link rel="shortcut icon" type=image/x-icon href=/favicons/favicon.ico><link rel=icon type=image/png sizes=32x32 href=/favicons/favicon-32x32.png><link rel=icon type=image/png sizes=16x16 href=/favicons/favicon-16x16.png><link rel=apple-touch-icon sizes=180x180 href=/favicons/apple-touch-icon.png><link rel=mask-icon href=/safari-pinned-tab.svg color=#5bbad5><link rel=manifest href=/site.webmanifest><link rel=canonical href=http://example.org/posts/kube-schedule/><link rel=prev href=http://example.org/posts/hpa/><link rel=stylesheet href=/css/style.min.css><link rel=preload href=https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.1.1/css/all.min.css as=style onload='this.onload=null,this.rel="stylesheet"'><noscript><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.1.1/css/all.min.css></noscript><link rel=preload href=https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css as=style onload='this.onload=null,this.rel="stylesheet"'><noscript><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css></noscript><script type=application/ld+json>{"@context":"http://schema.org","@type":"BlogPosting","headline":"调度器 kube-schedule","inLanguage":"zh-CN","mainEntityOfPage":{"@type":"WebPage","@id":"http:\/\/example.org\/posts\/kube-schedule\/"},"genre":"posts","wordcount":2316,"url":"http:\/\/example.org\/posts\/kube-schedule\/","datePublished":"2022-12-13T00:00:00+00:00","dateModified":"2022-12-13T00:00:00+00:00","publisher":{"@type":"Organization","name":""},"author":{"@type":"Person","name":"xuliangTang"},"description":""}</script></head><body data-header-desktop=fixed data-header-mobile=auto><script type=text/javascript>(window.localStorage&&localStorage.getItem("theme")?localStorage.getItem("theme")==="dark":"auto"==="auto"?window.matchMedia("(prefers-color-scheme: dark)").matches:"auto"==="dark")&&document.body.setAttribute("theme","dark")</script><div id=mask></div><div class=wrapper><header class=desktop id=header-desktop><div class=header-wrapper><div class=header-title><a href=/ title="Lain Blog">Dev Lain</a></div><div class=menu><div class=menu-inner><a class=menu-item href=/posts/>文章 </a><a class=menu-item href=/tags/>标签 </a><a class=menu-item href=/categories/>分类 </a><span class="menu-item delimiter"></span><a href=javascript:void(0); class="menu-item theme-switch" title="Switch Theme">
+<i class="fas fa-adjust fa-fw" aria-hidden=true></i></a></div></div></div></header><header class=mobile id=header-mobile><div class=header-container><div class=header-wrapper><div class=header-title><a href=/ title="Lain Blog">Dev Lain</a></div><div class=menu-toggle id=menu-toggle-mobile><span></span><span></span><span></span></div></div><div class=menu id=menu-mobile><a class=menu-item href=/posts/ title>文章</a><a class=menu-item href=/tags/ title>标签</a><a class=menu-item href=/categories/ title>分类</a><a href=javascript:void(0); class="menu-item theme-switch" title="Switch Theme">
+<i class="fas fa-adjust fa-fw" aria-hidden=true></i></a></div></div></header><main class=main><div class=container><div class=toc id=toc-auto><h2 class=toc-title>Contents</h2><div class=toc-content id=toc-content-auto></div></div><article class="page single"><h1 class="single-title animate__animated animate__flipInX">调度器 kube-schedule</h1><div class=post-meta><div class=post-meta-line><span class=post-author><a href=/ title=Author rel=author class=author><i class="fas fa-user-circle fa-fw" aria-hidden=true></i>xuliangTang</a></span>&nbsp;<span class=post-category>included in <a href=/categories/kubernetes/><i class="far fa-folder fa-fw" aria-hidden=true></i>kubernetes</a></span></div><div class=post-meta-line><i class="far fa-calendar-alt fa-fw" aria-hidden=true></i>&nbsp;<time datetime=2022-12-13>2022-12-13</time>&nbsp;<i class="fas fa-pencil-alt fa-fw" aria-hidden=true></i>&nbsp;2316 words&nbsp;
+<i class="far fa-clock fa-fw" aria-hidden=true></i>&nbsp;5 minutes&nbsp;</div></div><div class="details toc" id=toc-static data-kept><div class="details-summary toc-title"><span>Contents</span>
+<span><i class="details-icon fas fa-angle-right" aria-hidden=true></i></span></div><div class="details-content toc-content" id=toc-content-static><nav id=TableOfContents><ul><li><a href=#如何为-pod-选择节点>如何为 Pod 选择节点？</a></li><li><a href=#将-pod-指派给节点>将 Pod 指派给节点</a><ul><li><a href=#nodeselector>nodeSelector</a></li><li><a href=#节点亲和性-nodeaffinity>节点亲和性 nodeAffinity</a></li><li><a href=#节点污点和容忍度>节点污点和容忍度</a></li><li><a href=#pod-亲和性>Pod 亲和性</a></li></ul></li></ul></nav></div></div><div class=content id=content><p>Kube-scheduler 是 Kubernetes 集群默认的调度器，并且是控制面中一个核心组件。scheduler 通过 kubernetes 的监测（Watch）机制来发现集群中新创建且尚未被调度到 Node 上的 Pod。 scheduler 会将发现的每一个未调度的 Pod 调度到一个合适的 Node 上来运行。 scheduler会依据下文的调度原则来做出调度选择。</p><p><img class=lazyload src=/svg/loading.min.svg data-src=https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2393007-20220220103712446-1739360732.png data-srcset="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2393007-20220220103712446-1739360732.png, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2393007-20220220103712446-1739360732.png 1.5x, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2393007-20220220103712446-1739360732.png 2x" data-sizes=auto alt=https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2393007-20220220103712446-1739360732.png title=kube-scheduler></p><p>对于新创建的 pod 或其他未调度的 pod来讲，kube-scheduler 选择一个最佳节点供它们运行。但是，Pod 中的每个容器对资源的要求都不同，每个 Pod 也有不同的要求。因此，需要根据具体的调度要求对现有节点进行过滤。</p><p>在Kubernetes集群中，满足 Pod 调度要求的节点称为可行节点 （feasible nodes <em>FN</em>） 。如果没有合适的节点，则 pod 将保持未调度状态，直到调度程序能够放置它。也就是说，当我们创建 Pod 时，如果长期处于 Pending 状态，这个时候应该看你的集群调度器是否因为某些问题没有合适的节点了</p><p>调度器为 Pod 找到 FN 后，然后运行一组函数对 FN 进行评分，并在 FN 中找到得分最高的节点来运行 Pod。</p><p>调度策略在决策时需要考虑的因素包括个人和集体资源需求、硬件/软件/策略约束 （constraints）、亲和性 (affinity) 和反亲和性（ anti-affinity ）规范、数据局部性、工作负载间干扰等。</p><p>基本调度流程：</p><ul><li>发布 Pod</li><li>ControllerManager 会把 Pod 加入待调度队列</li><li>kube-scheduler 决定调度到哪个 node，然后写入 etcd</li><li>被选中节点中的 kubelet 开始工作（pull image、启动 Pod）</li></ul><h2 id=如何为-pod-选择节点>如何为 Pod 选择节点？</h2><p>kube-scheduler 给一个 Pod 做调度选择时包含两个步骤：</p><ul><li>过滤 (Filtering)</li><li>打分 (Scoring)</li></ul><p>过滤也被称为预选 （Predicates），该步骤会找到可调度的节点集，然后通过是否满足特定资源的请求，例如通过 PodFitsResources 过滤器检查候选节点是否有足够的资源来满足 Pod 资源的请求。这个步骤完成后会得到一个包含合适的节点的列表（通常为多个），如果列表为空，则Pod不可调度。</p><p>打分也被称为优选（Priorities），在该步骤中，会对上一个步骤的输出进行打分，Scheduer 通过打分的规则为每个通过 Filtering 步骤的节点计算出一个分数。</p><p>完成上述两个步骤之后，kube-scheduler 会将Pod分配给分数最高的 Node，如果存在多个相同分数的节点，会随机选择一个。</p><p><img class=lazyload src=/svg/loading.min.svg data-src=https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/kube-scheduler-filter.jpg data-srcset="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/kube-scheduler-filter.jpg, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/kube-scheduler-filter.jpg 1.5x, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/kube-scheduler-filter.jpg 2x" data-sizes=auto alt=https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/kube-scheduler-filter.jpg title="kube-scheduler filter"></p><h2 id=将-pod-指派给节点>将 Pod 指派给节点</h2><p>你可以约束一个 Pod 以便限制其只能在特定的节点上运行，或优先在特定的节点上运行。有几种方法可以实现这点，推荐的方法都是用标签选择算符来进行选择。 通常这样的约束不是必须的，因为调度器将自动进行合理的放置，但在某些情况下，你可能需要进一步控制 Pod 被部署到哪个节点。</p><p>给节点 lain1 添加一个标签 disktype=ssd</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>$ kubectl label nodes lain1 <span class=nv>disktype</span><span class=o>=</span>ssd
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># 删除标签</span>
+</span></span><span class=line><span class=cl>$ kubectl label nodes lain1 disktype-
+</span></span></code></pre></div><h3 id=nodeselector>nodeSelector</h3><p>设置你希望目标节点所具有的节点标签。</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-yaml data-lang=yaml><span class=line><span class=cl><span class=nt>apiVersion</span><span class=p>:</span><span class=w> </span><span class=l>v1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>kind</span><span class=p>:</span><span class=w> </span><span class=l>Pod</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>metadata</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>nginx</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>spec</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>containers</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span>- <span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>nginx</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>image</span><span class=p>:</span><span class=w> </span><span class=l>nginx</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>imagePullPolicy</span><span class=p>:</span><span class=w> </span><span class=l>IfNotPresent</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>nodeSelector</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>disktype</span><span class=p>:</span><span class=w> </span><span class=l>ssd	# 该Pod将被调度到有disktype=ssd标签的节点</span><span class=w>
+</span></span></span></code></pre></div><h3 id=节点亲和性-nodeaffinity>节点亲和性 nodeAffinity</h3><p>节点亲和性有两种：</p><ul><li><strong>requiredDuringSchedulingIgnoredDuringExecution</strong>：调度器只有在规则被满足的时候才能执行调度。此功能类似于</li><li><strong>preferredDuringSchedulingIgnoredDuringExecution</strong>：调度器会尝试寻找满足对应规则的节点。如果找不到匹配的节点，调度器仍然会调度该 Pod。</li></ul><h4 id=强制的节点亲和性调度>强制的节点亲和性调度</h4><p>下面的 pod 只会调度到具有 disktype=ssd 标签的节点上</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-yaml data-lang=yaml><span class=line><span class=cl><span class=nt>apiVersion</span><span class=p>:</span><span class=w> </span><span class=l>v1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>kind</span><span class=p>:</span><span class=w> </span><span class=l>Pod</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>metadata</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>nginx</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>spec</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>affinity</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>nodeAffinity</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=nt>requiredDuringSchedulingIgnoredDuringExecution</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=nt>nodeSelectorTerms</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span>- <span class=nt>matchExpressions</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>          </span>- <span class=nt>key</span><span class=p>:</span><span class=w> </span><span class=l>disktype</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=nt>operator</span><span class=p>:</span><span class=w> </span><span class=l>In</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=nt>values</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span>- <span class=l>ssd            </span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>containers</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span>- <span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>nginx</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>image</span><span class=p>:</span><span class=w> </span><span class=l>nginx</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>imagePullPolicy</span><span class=p>:</span><span class=w> </span><span class=l>IfNotPresent</span><span class=w>
+</span></span></span></code></pre></div><h4 id=首选的节点亲和性调度>首选的节点亲和性调度</h4><div class=highlight><pre tabindex=0 class=chroma><code class=language-yaml data-lang=yaml><span class=line><span class=cl><span class=nt>apiVersion</span><span class=p>:</span><span class=w> </span><span class=l>v1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>kind</span><span class=p>:</span><span class=w> </span><span class=l>Pod</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>metadata</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>nginx</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>spec</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>affinity</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>nodeAffinity</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=nt>preferredDuringSchedulingIgnoredDuringExecution</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span>- <span class=nt>weight</span><span class=p>:</span><span class=w> </span><span class=m>1</span><span class=w>	</span><span class=c># 权重</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=nt>preference</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>          </span><span class=nt>matchExpressions</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>          </span>- <span class=nt>key</span><span class=p>:</span><span class=w> </span><span class=l>disktype</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=nt>operator</span><span class=p>:</span><span class=w> </span><span class=l>In</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=nt>values</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span>- <span class=l>ssd          </span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>containers</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span>- <span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>nginx</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>image</span><span class=p>:</span><span class=w> </span><span class=l>nginx</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>imagePullPolicy</span><span class=p>:</span><span class=w> </span><span class=l>IfNotPresent</span><span class=w>
+</span></span></span></code></pre></div><h3 id=节点污点和容忍度>节点污点和容忍度</h3><p>节点亲和性使 Pod 被吸引到一类特定的节点，污点 (Taint) 则相反，它使节点能够排斥一类特定的 Pod。污点有三种类型：</p><ul><li><strong>NoSchedule</strong>：不会将 Pod 调度到该节点</li><li><strong>PreferNoSchedule</strong>：尽量避免将 Pod 调度到该节点上</li><li><strong>NoExecute</strong>：任何不能忍受这个污点的 Pod 都会马上被驱逐</li></ul><p>一些内置的污点：</p><ul><li>node.kubernetes.io/not-ready：节点未准备好。这相当于节点状况 Ready 的值为 False</li><li>node.kubernetes.io/unreachable：节点控制器访问不到节点. 这相当于节点状况 Ready 的值为 Unknown</li><li>node.kubernetes.io/memory-pressure：节点存在内存压力</li><li>node.kubernetes.io/disk-pressure：节点存在磁盘压力</li><li>node.kubernetes.io/pid-pressure: 节点的 PID 压力</li><li>node.kubernetes.io/network-unavailable：节点网络不可用</li><li>node.kubernetes.io/unschedulable: 节点不可调度</li><li>node.cloudprovider.kubernetes.io/uninitialized：如果 kubelet 启动时指定了一个“外部”云平台驱动， 它将给当前节点添加一个污点将其标志为不可用。在 cloud-controller-manager 的一个控制器初始化这个节点后，kubelet 将删除这个污点</li></ul><p>容忍度 (Toleration) 是应用于 Pod 上的。容忍度允许调度器调度带有对应污点的 Pod。 容忍度允许调度但并不保证调度：作为其功能的一部分， 调度器也会评估其他参数。</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl><span class=c1># 查看节点的污点</span>
+</span></span><span class=line><span class=cl>$ kubectl describe node lain1 <span class=p>|</span> grep Taints
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># 给节点打一个污点</span>
+</span></span><span class=line><span class=cl>$ kubectl taint nodes lain1 <span class=nv>key1</span><span class=o>=</span>value1:NoSchedule
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># 删除污点</span>
+</span></span><span class=line><span class=cl><span class=c1># kubectl taint node lain1 key1:NoSchedule -</span>
+</span></span></code></pre></div><p>使用容忍</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-yaml data-lang=yaml><span class=line><span class=cl><span class=nt>apiVersion</span><span class=p>:</span><span class=w> </span><span class=l>v1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>kind</span><span class=p>:</span><span class=w> </span><span class=l>Pod</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>metadata</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>nginx</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>spec</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>containers</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span>- <span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>nginx</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>image</span><span class=p>:</span><span class=w> </span><span class=l>nginx</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>imagePullPolicy</span><span class=p>:</span><span class=w> </span><span class=l>IfNotPresent</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>tolerations</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span>- <span class=nt>key</span><span class=p>:</span><span class=w> </span><span class=s2>&#34;key1&#34;</span><span class=w>		</span><span class=c># 对应污点key</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>operator</span><span class=p>:</span><span class=w> </span><span class=s2>&#34;Equal&#34;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>value</span><span class=p>:</span><span class=w> </span><span class=s2>&#34;value1&#34;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>effect</span><span class=p>:</span><span class=w> </span><span class=s2>&#34;NoSchedule&#34;</span><span class=w>
+</span></span></span></code></pre></div><h3 id=pod-亲和性>Pod 亲和性</h3><p>Pod 间亲和性与反亲和性使你可以基于已经在节点上运行的 Pod 的标签来约束 Pod 可以调度到的节点，而不是基于节点上的标签。</p><blockquote><p>Pod 亲和性和反亲和性都需要相当的计算量，因此会在大规模集群中显著降低调度速度。 不建议在包含数百个节点的集群中使用这类设置</p></blockquote><p>与节点亲和性类似，Pod 的亲和性与反亲和性也有两种类型：</p><ul><li><strong>requiredDuringSchedulingIgnoredDuringExecution</strong></li><li><strong>preferredDuringSchedulingIgnoredDuringExecution</strong></li></ul><p>实例资源清单</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-yaml data-lang=yaml><span class=line><span class=cl><span class=nt>apiVersion</span><span class=p>:</span><span class=w> </span><span class=l>apps/v1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>kind</span><span class=p>:</span><span class=w> </span><span class=l>Deployment</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>metadata</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>ngx1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>spec</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>selector</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>matchLabels</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=nt>app</span><span class=p>:</span><span class=w> </span><span class=l>ngx1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>replicas</span><span class=p>:</span><span class=w> </span><span class=m>1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>template</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>metadata</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=nt>labels</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=nt>app</span><span class=p>:</span><span class=w> </span><span class=l>ngx1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>spec</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=nt>nodeName</span><span class=p>:</span><span class=w> </span><span class=l>lain1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=nt>containers</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span>- <span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>ngx1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>          </span><span class=nt>image</span><span class=p>:</span><span class=w> </span><span class=l>nginx:1.18-alpine</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>          </span><span class=nt>imagePullPolicy</span><span class=p>:</span><span class=w> </span><span class=l>IfNotPresent</span><span class=w>
+</span></span></span></code></pre></div><p>下面这个 Pod 必须调度到具有 disktype 标签的节点上，并且集群中至少有一个位于该可用区的节点上运行着带有 app=ngx1 标签的 Pod</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-yaml data-lang=yaml><span class=line><span class=cl><span class=nt>apiVersion</span><span class=p>:</span><span class=w> </span><span class=l>apps/v1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>kind</span><span class=p>:</span><span class=w> </span><span class=l>Deployment</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>metadata</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>ngx2</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>spec</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>selector</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>matchLabels</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=nt>app</span><span class=p>:</span><span class=w> </span><span class=l>ngx2</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>replicas</span><span class=p>:</span><span class=w> </span><span class=m>1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>template</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>metadata</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=nt>labels</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=nt>app</span><span class=p>:</span><span class=w> </span><span class=l>ngx2</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>spec</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=nt>affinity</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=nt>podAffinity</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>          </span><span class=nt>requiredDuringSchedulingIgnoredDuringExecution</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span>- <span class=nt>labelSelector</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                </span><span class=nt>matchExpressions</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                  </span>- <span class=nt>key</span><span class=p>:</span><span class=w> </span><span class=l>app</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                    </span><span class=nt>operator</span><span class=p>:</span><span class=w> </span><span class=l>In</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                    </span><span class=nt>values</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                      </span>- <span class=l>ngx1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>              </span><span class=nt>topologyKey</span><span class=p>:</span><span class=w> </span><span class=l>disktype</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=nt>containers</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span>- <span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>ngx2</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>          </span><span class=nt>image</span><span class=p>:</span><span class=w> </span><span class=l>nginx:1.18-alpine</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>          </span><span class=nt>imagePullPolicy</span><span class=p>:</span><span class=w> </span><span class=l>IfNotPresent</span><span class=w>
+</span></span></span></code></pre></div></div><div class=post-footer id=post-footer><div class=post-info><div class=post-info-line><div class=post-info-mod><span>Updated on 2022-12-13</span></div></div><div class=post-info-line><div class=post-info-md></div><div class=post-info-share><span><a href=javascript:void(0); title="Share on Twitter" data-sharer=twitter data-url=http://example.org/posts/kube-schedule/ data-title="调度器 kube-schedule"><i class="fab fa-twitter fa-fw" aria-hidden=true></i></a><a href=javascript:void(0); title="Share on Facebook" data-sharer=facebook data-url=http://example.org/posts/kube-schedule/><i class="fab fa-facebook-square fa-fw" aria-hidden=true></i></a><a href=javascript:void(0); title="Share on Hacker News" data-sharer=hackernews data-url=http://example.org/posts/kube-schedule/ data-title="调度器 kube-schedule"><i class="fab fa-hacker-news fa-fw" aria-hidden=true></i></a><a href=javascript:void(0); title="Share on Line" data-sharer=line data-url=http://example.org/posts/kube-schedule/ data-title="调度器 kube-schedule"><i data-svg-src=https://cdn.jsdelivr.net/npm/simple-icons@7.3.0/icons/line.svg aria-hidden=true></i></a><a href=javascript:void(0); title="Share on 微博" data-sharer=weibo data-url=http://example.org/posts/kube-schedule/ data-title="调度器 kube-schedule"><i class="fab fa-weibo fa-fw" aria-hidden=true></i></a></span></div></div></div><div class=post-info-more><section class=post-tags></section><section><span><a href=javascript:void(0); onclick=window.history.back()>Back</a></span>&nbsp;|&nbsp;<span><a href=/>Home</a></span></section></div><div class=post-nav><a href=/posts/hpa/ class=prev rel=prev title="Pod 水平自动扩缩 — HPA"><i class="fas fa-angle-left fa-fw" aria-hidden=true></i>Pod 水平自动扩缩 — HPA</a></div></div></article></div></main><footer class=footer><div class=footer-container><div class=footer-line>Powered by <a href=https://gohugo.io/ target=_blank rel="noopener noreffer" title="Hugo 0.108.0">Hugo</a> | Theme - <a href=https://github.com/dillonzq/LoveIt target=_blank rel="noopener noreffer" title="LoveIt 0.2.11"><i class="far fa-kiss-wink-heart fa-fw" aria-hidden=true></i> LoveIt</a></div><div class=footer-line itemscope itemtype=http://schema.org/CreativeWork><i class="far fa-copyright fa-fw" aria-hidden=true></i><span itemprop=copyrightYear>2022</span><span class=author itemprop=copyrightHolder>&nbsp;<a href=/ target=_blank>xuliangTang</a></span></div></div></footer></div><div id=fixed-buttons><a href=# id=back-to-top class=fixed-button title="Back to Top"><i class="fas fa-arrow-up fa-fw" aria-hidden=true></i>
+</a><a href=# id=view-comments class=fixed-button title="View Comments"><i class="fas fa-comment fa-fw" aria-hidden=true></i></a></div><script type=text/javascript src=https://cdn.jsdelivr.net/npm/lazysizes@5.3.2/lazysizes.min.js></script><script type=text/javascript src=https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js></script><script type=text/javascript src=https://cdn.jsdelivr.net/npm/sharer.js@0.5.1/sharer.min.js></script><script type=text/javascript>window.config={code:{copyTitle:"Copy to clipboard",maxShownLines:50},comment:{}}</script><script type=text/javascript src=/js/theme.min.js></script></body></html>

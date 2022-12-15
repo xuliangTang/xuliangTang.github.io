@@ -1,280 +1,69 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="robots" content="noodp" />
-        <title>Service - Lain Blog</title><meta name="Description" content="This is my cool site"><meta property="og:title" content="Service" />
-<meta property="og:description" content="在 Kubernetes 中，pod 是应用程序的载体，我们可以通过 pod 的 ip 来访问应用程序，但是 pod 的 ip 地址不是固定的，这也就意味着不方便直接采用 pod 的 ip 对服务进行访问 为" />
-<meta property="og:type" content="article" />
-<meta property="og:url" content="http://example.org/posts/service/" /><meta property="article:section" content="posts" />
-<meta property="article:published_time" content="2022-12-11T00:00:00+00:00" />
-<meta property="article:modified_time" content="2022-12-11T00:00:00+00:00" /><meta property="og:site_name" content="My cool site" />
-
-<meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="Service"/>
-<meta name="twitter:description" content="在 Kubernetes 中，pod 是应用程序的载体，我们可以通过 pod 的 ip 来访问应用程序，但是 pod 的 ip 地址不是固定的，这也就意味着不方便直接采用 pod 的 ip 对服务进行访问 为"/>
-<meta name="application-name" content="Lain Blog">
-<meta name="apple-mobile-web-app-title" content="Lain Blog"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="shortcut icon" type="image/x-icon" href="/favicons/favicon.ico" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/favicons/favicon-32x32.png">
-        <link rel="icon" type="image/png" sizes="16x16" href="/favicons/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="http://example.org/posts/service/" /><link rel="prev" href="http://example.org/posts/secret/" /><link rel="next" href="http://example.org/posts/pv_pvc/" /><link rel="stylesheet" href="/css/style.min.css"><link rel="preload" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.1.1/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-        <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.1.1/css/all.min.css"></noscript><link rel="preload" href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-        <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css"></noscript><script type="application/ld+json">
-    {
-        "@context": "http://schema.org",
-        "@type": "BlogPosting",
-        "headline": "Service",
-        "inLanguage": "zh-CN",
-        "mainEntityOfPage": {
-            "@type": "WebPage",
-            "@id": "http:\/\/example.org\/posts\/service\/"
-        },"genre": "posts","wordcount":  1552 ,
-        "url": "http:\/\/example.org\/posts\/service\/","datePublished": "2022-12-11T00:00:00+00:00","dateModified": "2022-12-11T00:00:00+00:00","publisher": {
-            "@type": "Organization",
-            "name": ""},"author": {
-                "@type": "Person",
-                "name": "xuliangTang"
-            },"description": ""
-    }
-    </script></head>
-    <body data-header-desktop="fixed" data-header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
-
-        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
-    <div class="header-wrapper">
-        <div class="header-title">
-            <a href="/" title="Lain Blog">Dev Lain</a>
-        </div>
-        <div class="menu">
-            <div class="menu-inner"><a class="menu-item" href="/posts/"> 文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="Switch Theme">
-                    <i class="fas fa-adjust fa-fw" aria-hidden="true"></i>
-                </a></div>
-        </div>
-    </div>
-</header><header class="mobile" id="header-mobile">
-    <div class="header-container">
-        <div class="header-wrapper">
-            <div class="header-title">
-                <a href="/" title="Lain Blog">Dev Lain</a>
-            </div>
-            <div class="menu-toggle" id="menu-toggle-mobile">
-                <span></span><span></span><span></span>
-            </div>
-        </div>
-        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts/" title="">文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a href="javascript:void(0);" class="menu-item theme-switch" title="Switch Theme">
-                <i class="fas fa-adjust fa-fw" aria-hidden="true"></i>
-            </a></div>
-    </div>
-</header><main class="main">
-                <div class="container"><div class="toc" id="toc-auto">
-            <h2 class="toc-title">Contents</h2>
-            <div class="toc-content" id="toc-content-auto"></div>
-        </div><article class="page single"><h1 class="single-title animate__animated animate__flipInX">Service</h1><div class="post-meta">
-            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel="author" class="author"><i class="fas fa-user-circle fa-fw" aria-hidden="true"></i>xuliangTang</a></span>&nbsp;<span class="post-category">included in <a href="/categories/kubernetes/"><i class="far fa-folder fa-fw" aria-hidden="true"></i>kubernetes</a></span></div>
-            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw" aria-hidden="true"></i>&nbsp;<time datetime="2022-12-11">2022-12-11</time>&nbsp;<i class="fas fa-pencil-alt fa-fw" aria-hidden="true"></i>&nbsp;1552 words&nbsp;
-                <i class="far fa-clock fa-fw" aria-hidden="true"></i>&nbsp;4 minutes&nbsp;</div>
-        </div><div class="details toc" id="toc-static"  data-kept="">
-                <div class="details-summary toc-title">
-                    <span>Contents</span>
-                    <span><i class="details-icon fas fa-angle-right" aria-hidden="true"></i></span>
-                </div>
-                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
-  <ul>
-    <li><a href="#服务类型">服务类型</a></li>
-    <li><a href="#service-使用">Service 使用</a>
-      <ul>
-        <li><a href="#创建">创建</a></li>
-      </ul>
-    </li>
-    <li><a href="#endpoint">EndPoint</a></li>
-    <li><a href="#kube-proxy">kube-proxy</a>
-      <ul>
-        <li><a href="#userspace-模式废弃">userspace 模式(废弃)</a></li>
-        <li><a href="#iptables-模式默认模式">iptables 模式(默认模式)</a></li>
-        <li><a href="#ipvs-模式">IPVS 模式</a></li>
-      </ul>
-    </li>
-    <li><a href="#无头headliness-类型的-service">无头(HeadLiness) 类型的 Service</a></li>
-    <li><a href="#宿主机访问-service">宿主机访问 Service</a>
-      <ul>
-        <li><a href="#安装-bind-utils">安装 bind-utils</a></li>
-        <li><a href="#设置解析">设置解析</a></li>
-      </ul>
-    </li>
-  </ul>
-</nav></div>
-            </div><div class="content" id="content"><p>在 Kubernetes 中，pod 是应用程序的载体，我们可以通过 pod 的 ip 来访问应用程序，但是 pod 的 ip 地址不是固定的，这也就意味着不方便直接采用 pod 的 ip 对服务进行访问</p>
-<p>为了解决这个问题，Kubernetes 提供了 service 资源，service 会对提供同一个服务的多个 pod 进行聚合，并且提供一个统一的入口地址，通过访问 service 的入口地址就能访问到后面的 pod 服务。</p>
-<p>通过 service 可以提供负载均衡和服务自动发现</p>
-<p><img
-        class="lazyload"
-        src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210809170841691-1245411009.png"
-        data-srcset="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210809170841691-1245411009.png, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210809170841691-1245411009.png 1.5x, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210809170841691-1245411009.png 2x"
-        data-sizes="auto"
-        alt="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210809170841691-1245411009.png"
-        title="img" /></p>
-<h2 id="服务类型">服务类型</h2>
-<ul>
-<li>ClusterIP：k8s 默认的 ServiceType，通过集群的内部 IP 暴露服务，选择该值时服务只能够在集群内部访问</li>
-<li>NodePort：用来对集群外暴露 Service，你可以通过访问集群内的每个 NodeIP:NodePort 的方式，访问到对应 Service 后端的 Endpoint</li>
-<li>LoadBalancer: 这也是用来对集群外暴露服务的，不同的是这需要外部负载均衡器的云提供商，比如 AWS 等</li>
-<li>ExternalName：这个也是在集群内发布服务用的，需要借助 KubeDNS(version &gt;= 1.7) 的支持，就是用KubeDNS 将该 service 和 ExternalName 做一个 Map，KubeDNS 返回一个 CNAME 记录。</li>
-</ul>
-<p>每种服务类型都是会指定一个 clusterIP 的，由 clusterIP 进入对应代理模式实现负载均衡，如果强制 <code>spec.clusterIP: &quot;None&quot;</code>（即 headless service），集群无法为它们实现负载均衡，直接通过 pod 域名访问pod，典型是应用是 StatefulSet。</p>
-<h2 id="service-使用">Service 使用</h2>
-<h3 id="创建">创建</h3>
-<p>创建 deployment 信息，设置 app=nginx 的标签</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">apps/v1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Deployment</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">myngx</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">selector</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">matchLabels</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">nginx</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="m">1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">template</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">labels</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">nginx</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">containers</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">ngx</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;nginx:1.18-alpine&#34;</span><span class="w">
-</span></span></span></code></pre></div><p>创建一个名为 nginx-svc 的 service 对象，它会将请求代理到80端口且具有标签 <code> app: nginx</code> 的 pod 上</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">v1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Service</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">nginx-svc</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l">ClusterIP</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="l">selector:		# 通过selector和pod建立关联</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">nginx</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">ports</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="m">80</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">targetPort</span><span class="p">:</span><span class="w"> </span><span class="m">80</span><span class="w">
-</span></span></span></code></pre></div><h2 id="endpoint">EndPoint</h2>
-<p>Endpoint 是 k8s 中的一个资源对象，存储在 etcd 中，用来记录一个 service 对应的所有 pod 的访问地址，它是根据 service 配置文件中的 selector 描述产生的</p>
-<p>一个 service 由一组 pod 组成，这些 pod 通过 endpoints 暴露出来，<strong>endpoints 是实现实际服务的端点集合</strong>。换句话说，service 和 pod 之间的联系是通过 endpoints 实现的。</p>
-<p><img
-        class="lazyload"
-        src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210811115326320-1833457826.png"
-        data-srcset="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210811115326320-1833457826.png, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210811115326320-1833457826.png 1.5x, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210811115326320-1833457826.png 2x"
-        data-sizes="auto"
-        alt="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210811115326320-1833457826.png"
-        title="img" /></p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl get endpoints
-</span></span><span class="line"><span class="cl">NAME         ENDPOINTS                        AGE
-</span></span><span class="line"><span class="cl">kubernetes   192.168.0.111:6443               12d
-</span></span><span class="line"><span class="cl">nginx-svc    10.244.0.181:80,10.244.3.32:80   59m
-</span></span></code></pre></div><h2 id="kube-proxy">kube-proxy</h2>
-<p>主要负责 pod 网络代理，维护网络规则和四层负载均衡工作</p>
-<p>service 在很多情况下只是一个概念，真正起作用的其实是 kube-proxy 服务进程，每个 node 节点上都运行一个kube-proxy 服务进程，当创建 service 的时候会通过 api-server 向 etcd 写入创建的 service 信息，而 kube-proxy 会基于监听的机制发现这种 service 的变动，然后<strong>它会将最新的 service 信息转换成对应的访问规则</strong></p>
-<p>kube-proxy 监听 10249 和 10256 端口，对外提供 /metrics 和 /healthy 的访问</p>
-<p><img
-        class="lazyload"
-        src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210809171742862-1608927520.png"
-        data-srcset="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210809171742862-1608927520.png, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210809171742862-1608927520.png 1.5x, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210809171742862-1608927520.png 2x"
-        data-sizes="auto"
-        alt="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210809171742862-1608927520.png"
-        title="img" /></p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># 查看配置</span>
-</span></span><span class="line"><span class="cl">$ kubectl describe cm kube-proxy -n kube-system
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># 查看 kube-proxy pod</span>
-</span></span><span class="line"><span class="cl">$ kubectl get pods -n kube-system <span class="p">|</span> grep kube-proxy
-</span></span><span class="line"><span class="cl">kube-proxy-bxk96                1/1     Running   <span class="m">2</span>          11d
-</span></span><span class="line"><span class="cl">kube-proxy-xbv75                1/1     Running   <span class="m">4</span>          12d
-</span></span></code></pre></div><h3 id="userspace-模式废弃">userspace 模式(废弃)</h3>
-<h3 id="iptables-模式默认模式">iptables 模式(默认模式)</h3>
-<p>iptables 模式下，节点上 kube-proxy 持续监听 Service 以及 Endpoints 对象的变化，为 service 后端的每个 pod 创建对应的 iptables 规则，当捕获到 Service 的 clusterIP 和端口请求，利用注入的 iptables，将请求重定向到 Service 的对应的 Pod</p>
-<p><img
-        class="lazyload"
-        src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210810103911436-340397863.png"
-        data-srcset="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210810103911436-340397863.png, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210810103911436-340397863.png 1.5x, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210810103911436-340397863.png 2x"
-        data-sizes="auto"
-        alt="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210810103911436-340397863.png"
-        title="img" /></p>
-<h3 id="ipvs-模式">IPVS 模式</h3>
-<p>IPVS 模式是利用 linux 的 IPVS 模块实现，同样是由 kube-proxy 实时监视集群的 service 和 endpoint。基于内核内哈希表，有更高的网络流量吞吐量（iptables 模式在大规模集群，比如10000 个服务中性能下降显著），并且具有更复杂的负载均衡算法（最小连接、局部性、 加权、持久性）</p>
-<p>当 kube-proxy 以 IPVS 代理模式启动时，它将验证 IPVS 内核模块是否可用。 如果未检测到 IPVS 内核模块，则 kube-proxy 将退回到以 iptables 代理模式运行。</p>
-<p><img
-        class="lazyload"
-        src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210810104618211-702040131.png"
-        data-srcset="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210810104618211-702040131.png, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210810104618211-702040131.png 1.5x, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210810104618211-702040131.png 2x"
-        data-sizes="auto"
-        alt="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210810104618211-702040131.png"
-        title="img" /></p>
-<h2 id="无头headliness-类型的-service">无头(HeadLiness) 类型的 Service</h2>
-<p>在某些场景中，开发人员可能不想使用 Service 提供的负载均衡功能，而希望自己来控制负载均衡策略，针对这种情况，k8s 提供了 HeadLiness Service，这类 Service 不会分配 ClusterIP，如果想要访问 Service，只能通过service 的域名进行查询</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">v1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Service</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">nginx-svc</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">clusterIP</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;None&#34;</span><span class="w">		</span><span class="c"># 将clusterIP设置为None，即可创建headliness Service</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l">ClusterIP</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">selector</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">nginx</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">ports</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="m">80</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">targetPort</span><span class="p">:</span><span class="w"> </span><span class="m">80</span><span class="w">
-</span></span></span></code></pre></div><h2 id="宿主机访问-service">宿主机访问 Service</h2>
-<h3 id="安装-bind-utils">安装 bind-utils</h3>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ sudo yum install bind-utils -y
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># 无法直接查询到service对应的ip</span>
-</span></span><span class="line"><span class="cl">$ nslookup nginx-svc
-</span></span><span class="line"><span class="cl">** server can<span class="err">&#39;</span>t find nginx-svc: NXDOMAIN
-</span></span></code></pre></div><h3 id="设置解析">设置解析</h3>
-<p>查看 kube-dns clusterIp</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl get svc -n kube-system
-</span></span><span class="line"><span class="cl">NAME       TYPE        CLUSTER-IP   EXTERNAL-IP   PORT<span class="o">(</span>S<span class="o">)</span>                  AGE
-</span></span><span class="line"><span class="cl">kube-dns   ClusterIP   10.96.0.10   &lt;none&gt;        53/UDP,53/TCP,9153/TCP   11d
-</span></span></code></pre></div><p>修改 <code>/etc/resolv.conf</code> 文件，设置DNS服务器IP地址、DNS域名和设置主机的域名搜索顺序。加入内容</p>
-<pre tabindex="0"><code>nameserver 10.96.0.10
+<!doctype html><html lang=zh-cn><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=robots content="noodp"><title>Service - Lain Blog</title><meta name=Description content="This is my cool site"><meta property="og:title" content="Service"><meta property="og:description" content="在 Kubernetes 中，pod 是应用程序的载体，我们可以通过 pod 的 ip 来访问应用程序，但是 pod 的 ip 地址不是固定的，这也就意味着不方便直接采用 pod 的 ip 对服务进行访问 为"><meta property="og:type" content="article"><meta property="og:url" content="http://example.org/posts/service/"><meta property="article:section" content="posts"><meta property="article:published_time" content="2022-12-11T00:00:00+00:00"><meta property="article:modified_time" content="2022-12-11T00:00:00+00:00"><meta property="og:site_name" content="My cool site"><meta name=twitter:card content="summary"><meta name=twitter:title content="Service"><meta name=twitter:description content="在 Kubernetes 中，pod 是应用程序的载体，我们可以通过 pod 的 ip 来访问应用程序，但是 pod 的 ip 地址不是固定的，这也就意味着不方便直接采用 pod 的 ip 对服务进行访问 为"><meta name=application-name content="Lain Blog"><meta name=apple-mobile-web-app-title content="Lain Blog"><meta name=theme-color content="#ffffff"><meta name=msapplication-TileColor content="#da532c"><link rel="shortcut icon" type=image/x-icon href=/favicons/favicon.ico><link rel=icon type=image/png sizes=32x32 href=/favicons/favicon-32x32.png><link rel=icon type=image/png sizes=16x16 href=/favicons/favicon-16x16.png><link rel=apple-touch-icon sizes=180x180 href=/favicons/apple-touch-icon.png><link rel=mask-icon href=/safari-pinned-tab.svg color=#5bbad5><link rel=manifest href=/site.webmanifest><link rel=canonical href=http://example.org/posts/service/><link rel=prev href=http://example.org/posts/secret/><link rel=next href=http://example.org/posts/pv_pvc/><link rel=stylesheet href=/css/style.min.css><link rel=preload href=https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.1.1/css/all.min.css as=style onload='this.onload=null,this.rel="stylesheet"'><noscript><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.1.1/css/all.min.css></noscript><link rel=preload href=https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css as=style onload='this.onload=null,this.rel="stylesheet"'><noscript><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css></noscript><script type=application/ld+json>{"@context":"http://schema.org","@type":"BlogPosting","headline":"Service","inLanguage":"zh-CN","mainEntityOfPage":{"@type":"WebPage","@id":"http:\/\/example.org\/posts\/service\/"},"genre":"posts","wordcount":1552,"url":"http:\/\/example.org\/posts\/service\/","datePublished":"2022-12-11T00:00:00+00:00","dateModified":"2022-12-11T00:00:00+00:00","publisher":{"@type":"Organization","name":""},"author":{"@type":"Person","name":"xuliangTang"},"description":""}</script></head><body data-header-desktop=fixed data-header-mobile=auto><script type=text/javascript>(window.localStorage&&localStorage.getItem("theme")?localStorage.getItem("theme")==="dark":"auto"==="auto"?window.matchMedia("(prefers-color-scheme: dark)").matches:"auto"==="dark")&&document.body.setAttribute("theme","dark")</script><div id=mask></div><div class=wrapper><header class=desktop id=header-desktop><div class=header-wrapper><div class=header-title><a href=/ title="Lain Blog">Dev Lain</a></div><div class=menu><div class=menu-inner><a class=menu-item href=/posts/>文章 </a><a class=menu-item href=/tags/>标签 </a><a class=menu-item href=/categories/>分类 </a><span class="menu-item delimiter"></span><a href=javascript:void(0); class="menu-item theme-switch" title="Switch Theme">
+<i class="fas fa-adjust fa-fw" aria-hidden=true></i></a></div></div></div></header><header class=mobile id=header-mobile><div class=header-container><div class=header-wrapper><div class=header-title><a href=/ title="Lain Blog">Dev Lain</a></div><div class=menu-toggle id=menu-toggle-mobile><span></span><span></span><span></span></div></div><div class=menu id=menu-mobile><a class=menu-item href=/posts/ title>文章</a><a class=menu-item href=/tags/ title>标签</a><a class=menu-item href=/categories/ title>分类</a><a href=javascript:void(0); class="menu-item theme-switch" title="Switch Theme">
+<i class="fas fa-adjust fa-fw" aria-hidden=true></i></a></div></div></header><main class=main><div class=container><div class=toc id=toc-auto><h2 class=toc-title>Contents</h2><div class=toc-content id=toc-content-auto></div></div><article class="page single"><h1 class="single-title animate__animated animate__flipInX">Service</h1><div class=post-meta><div class=post-meta-line><span class=post-author><a href=/ title=Author rel=author class=author><i class="fas fa-user-circle fa-fw" aria-hidden=true></i>xuliangTang</a></span>&nbsp;<span class=post-category>included in <a href=/categories/kubernetes/><i class="far fa-folder fa-fw" aria-hidden=true></i>kubernetes</a></span></div><div class=post-meta-line><i class="far fa-calendar-alt fa-fw" aria-hidden=true></i>&nbsp;<time datetime=2022-12-11>2022-12-11</time>&nbsp;<i class="fas fa-pencil-alt fa-fw" aria-hidden=true></i>&nbsp;1552 words&nbsp;
+<i class="far fa-clock fa-fw" aria-hidden=true></i>&nbsp;4 minutes&nbsp;</div></div><div class="details toc" id=toc-static data-kept><div class="details-summary toc-title"><span>Contents</span>
+<span><i class="details-icon fas fa-angle-right" aria-hidden=true></i></span></div><div class="details-content toc-content" id=toc-content-static><nav id=TableOfContents><ul><li><a href=#服务类型>服务类型</a></li><li><a href=#service-使用>Service 使用</a><ul><li><a href=#创建>创建</a></li></ul></li><li><a href=#endpoint>EndPoint</a></li><li><a href=#kube-proxy>kube-proxy</a><ul><li><a href=#userspace-模式废弃>userspace 模式(废弃)</a></li><li><a href=#iptables-模式默认模式>iptables 模式(默认模式)</a></li><li><a href=#ipvs-模式>IPVS 模式</a></li></ul></li><li><a href=#无头headliness-类型的-service>无头(HeadLiness) 类型的 Service</a></li><li><a href=#宿主机访问-service>宿主机访问 Service</a><ul><li><a href=#安装-bind-utils>安装 bind-utils</a></li><li><a href=#设置解析>设置解析</a></li></ul></li></ul></nav></div></div><div class=content id=content><p>在 Kubernetes 中，pod 是应用程序的载体，我们可以通过 pod 的 ip 来访问应用程序，但是 pod 的 ip 地址不是固定的，这也就意味着不方便直接采用 pod 的 ip 对服务进行访问</p><p>为了解决这个问题，Kubernetes 提供了 service 资源，service 会对提供同一个服务的多个 pod 进行聚合，并且提供一个统一的入口地址，通过访问 service 的入口地址就能访问到后面的 pod 服务。</p><p>通过 service 可以提供负载均衡和服务自动发现</p><p><img class=lazyload src=/svg/loading.min.svg data-src=https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210809170841691-1245411009.png data-srcset="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210809170841691-1245411009.png, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210809170841691-1245411009.png 1.5x, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210809170841691-1245411009.png 2x" data-sizes=auto alt=https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210809170841691-1245411009.png title=img></p><h2 id=服务类型>服务类型</h2><ul><li>ClusterIP：k8s 默认的 ServiceType，通过集群的内部 IP 暴露服务，选择该值时服务只能够在集群内部访问</li><li>NodePort：用来对集群外暴露 Service，你可以通过访问集群内的每个 NodeIP:NodePort 的方式，访问到对应 Service 后端的 Endpoint</li><li>LoadBalancer: 这也是用来对集群外暴露服务的，不同的是这需要外部负载均衡器的云提供商，比如 AWS 等</li><li>ExternalName：这个也是在集群内发布服务用的，需要借助 KubeDNS(version >= 1.7) 的支持，就是用KubeDNS 将该 service 和 ExternalName 做一个 Map，KubeDNS 返回一个 CNAME 记录。</li></ul><p>每种服务类型都是会指定一个 clusterIP 的，由 clusterIP 进入对应代理模式实现负载均衡，如果强制 <code>spec.clusterIP: "None"</code>（即 headless service），集群无法为它们实现负载均衡，直接通过 pod 域名访问pod，典型是应用是 StatefulSet。</p><h2 id=service-使用>Service 使用</h2><h3 id=创建>创建</h3><p>创建 deployment 信息，设置 app=nginx 的标签</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-yaml data-lang=yaml><span class=line><span class=cl><span class=nt>apiVersion</span><span class=p>:</span><span class=w> </span><span class=l>apps/v1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>kind</span><span class=p>:</span><span class=w> </span><span class=l>Deployment</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>metadata</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>myngx</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>spec</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>selector</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>matchLabels</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=nt>app</span><span class=p>:</span><span class=w> </span><span class=l>nginx</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>replicas</span><span class=p>:</span><span class=w> </span><span class=m>1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>template</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>metadata</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=nt>labels</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=nt>app</span><span class=p>:</span><span class=w> </span><span class=l>nginx</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>spec</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=nt>containers</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span>- <span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>ngx</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=nt>image</span><span class=p>:</span><span class=w> </span><span class=s2>&#34;nginx:1.18-alpine&#34;</span><span class=w>
+</span></span></span></code></pre></div><p>创建一个名为 nginx-svc 的 service 对象，它会将请求代理到80端口且具有标签 <code>app: nginx</code> 的 pod 上</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-yaml data-lang=yaml><span class=line><span class=cl><span class=nt>apiVersion</span><span class=p>:</span><span class=w> </span><span class=l>v1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>kind</span><span class=p>:</span><span class=w> </span><span class=l>Service</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>metadata</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>nginx-svc</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>spec</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>type</span><span class=p>:</span><span class=w> </span><span class=l>ClusterIP</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=l>selector:		# 通过selector和pod建立关联</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>app</span><span class=p>:</span><span class=w> </span><span class=l>nginx</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>ports</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span>- <span class=nt>port</span><span class=p>:</span><span class=w> </span><span class=m>80</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=nt>targetPort</span><span class=p>:</span><span class=w> </span><span class=m>80</span><span class=w>
+</span></span></span></code></pre></div><h2 id=endpoint>EndPoint</h2><p>Endpoint 是 k8s 中的一个资源对象，存储在 etcd 中，用来记录一个 service 对应的所有 pod 的访问地址，它是根据 service 配置文件中的 selector 描述产生的</p><p>一个 service 由一组 pod 组成，这些 pod 通过 endpoints 暴露出来，<strong>endpoints 是实现实际服务的端点集合</strong>。换句话说，service 和 pod 之间的联系是通过 endpoints 实现的。</p><p><img class=lazyload src=/svg/loading.min.svg data-src=https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210811115326320-1833457826.png data-srcset="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210811115326320-1833457826.png, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210811115326320-1833457826.png 1.5x, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210811115326320-1833457826.png 2x" data-sizes=auto alt=https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210811115326320-1833457826.png title=img></p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>$ kubectl get endpoints
+</span></span><span class=line><span class=cl>NAME         ENDPOINTS                        AGE
+</span></span><span class=line><span class=cl>kubernetes   192.168.0.111:6443               12d
+</span></span><span class=line><span class=cl>nginx-svc    10.244.0.181:80,10.244.3.32:80   59m
+</span></span></code></pre></div><h2 id=kube-proxy>kube-proxy</h2><p>主要负责 pod 网络代理，维护网络规则和四层负载均衡工作</p><p>service 在很多情况下只是一个概念，真正起作用的其实是 kube-proxy 服务进程，每个 node 节点上都运行一个kube-proxy 服务进程，当创建 service 的时候会通过 api-server 向 etcd 写入创建的 service 信息，而 kube-proxy 会基于监听的机制发现这种 service 的变动，然后<strong>它会将最新的 service 信息转换成对应的访问规则</strong></p><p>kube-proxy 监听 10249 和 10256 端口，对外提供 /metrics 和 /healthy 的访问</p><p><img class=lazyload src=/svg/loading.min.svg data-src=https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210809171742862-1608927520.png data-srcset="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210809171742862-1608927520.png, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210809171742862-1608927520.png 1.5x, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210809171742862-1608927520.png 2x" data-sizes=auto alt=https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210809171742862-1608927520.png title=img></p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl><span class=c1># 查看配置</span>
+</span></span><span class=line><span class=cl>$ kubectl describe cm kube-proxy -n kube-system
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># 查看 kube-proxy pod</span>
+</span></span><span class=line><span class=cl>$ kubectl get pods -n kube-system <span class=p>|</span> grep kube-proxy
+</span></span><span class=line><span class=cl>kube-proxy-bxk96                1/1     Running   <span class=m>2</span>          11d
+</span></span><span class=line><span class=cl>kube-proxy-xbv75                1/1     Running   <span class=m>4</span>          12d
+</span></span></code></pre></div><h3 id=userspace-模式废弃>userspace 模式(废弃)</h3><h3 id=iptables-模式默认模式>iptables 模式(默认模式)</h3><p>iptables 模式下，节点上 kube-proxy 持续监听 Service 以及 Endpoints 对象的变化，为 service 后端的每个 pod 创建对应的 iptables 规则，当捕获到 Service 的 clusterIP 和端口请求，利用注入的 iptables，将请求重定向到 Service 的对应的 Pod</p><p><img class=lazyload src=/svg/loading.min.svg data-src=https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210810103911436-340397863.png data-srcset="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210810103911436-340397863.png, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210810103911436-340397863.png 1.5x, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210810103911436-340397863.png 2x" data-sizes=auto alt=https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210810103911436-340397863.png title=img></p><h3 id=ipvs-模式>IPVS 模式</h3><p>IPVS 模式是利用 linux 的 IPVS 模块实现，同样是由 kube-proxy 实时监视集群的 service 和 endpoint。基于内核内哈希表，有更高的网络流量吞吐量（iptables 模式在大规模集群，比如10000 个服务中性能下降显著），并且具有更复杂的负载均衡算法（最小连接、局部性、 加权、持久性）</p><p>当 kube-proxy 以 IPVS 代理模式启动时，它将验证 IPVS 内核模块是否可用。 如果未检测到 IPVS 内核模块，则 kube-proxy 将退回到以 iptables 代理模式运行。</p><p><img class=lazyload src=/svg/loading.min.svg data-src=https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210810104618211-702040131.png data-srcset="https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210810104618211-702040131.png, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210810104618211-702040131.png 1.5x, https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210810104618211-702040131.png 2x" data-sizes=auto alt=https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/2164474-20210810104618211-702040131.png title=img></p><h2 id=无头headliness-类型的-service>无头(HeadLiness) 类型的 Service</h2><p>在某些场景中，开发人员可能不想使用 Service 提供的负载均衡功能，而希望自己来控制负载均衡策略，针对这种情况，k8s 提供了 HeadLiness Service，这类 Service 不会分配 ClusterIP，如果想要访问 Service，只能通过service 的域名进行查询</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-yaml data-lang=yaml><span class=line><span class=cl><span class=nt>apiVersion</span><span class=p>:</span><span class=w> </span><span class=l>v1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>kind</span><span class=p>:</span><span class=w> </span><span class=l>Service</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>metadata</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>nginx-svc</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>spec</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>clusterIP</span><span class=p>:</span><span class=w> </span><span class=s2>&#34;None&#34;</span><span class=w>		</span><span class=c># 将clusterIP设置为None，即可创建headliness Service</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>type</span><span class=p>:</span><span class=w> </span><span class=l>ClusterIP</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>selector</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>app</span><span class=p>:</span><span class=w> </span><span class=l>nginx</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>ports</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span>- <span class=nt>port</span><span class=p>:</span><span class=w> </span><span class=m>80</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=nt>targetPort</span><span class=p>:</span><span class=w> </span><span class=m>80</span><span class=w>
+</span></span></span></code></pre></div><h2 id=宿主机访问-service>宿主机访问 Service</h2><h3 id=安装-bind-utils>安装 bind-utils</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>$ sudo yum install bind-utils -y
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># 无法直接查询到service对应的ip</span>
+</span></span><span class=line><span class=cl>$ nslookup nginx-svc
+</span></span><span class=line><span class=cl>** server can<span class=err>&#39;</span>t find nginx-svc: NXDOMAIN
+</span></span></code></pre></div><h3 id=设置解析>设置解析</h3><p>查看 kube-dns clusterIp</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>$ kubectl get svc -n kube-system
+</span></span><span class=line><span class=cl>NAME       TYPE        CLUSTER-IP   EXTERNAL-IP   PORT<span class=o>(</span>S<span class=o>)</span>                  AGE
+</span></span><span class=line><span class=cl>kube-dns   ClusterIP   10.96.0.10   &lt;none&gt;        53/UDP,53/TCP,9153/TCP   11d
+</span></span></code></pre></div><p>修改 <code>/etc/resolv.conf</code> 文件，设置DNS服务器IP地址、DNS域名和设置主机的域名搜索顺序。加入内容</p><pre tabindex=0><code>nameserver 10.96.0.10
 search default.svc.cluster.local svc.cluster.local
-</code></pre><p>访问</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ curl nginx-svc
-</span></span></code></pre></div></div><div class="post-footer" id="post-footer">
-    <div class="post-info">
-        <div class="post-info-line">
-            <div class="post-info-mod">
-                <span>Updated on 2022-12-11</span>
-            </div></div>
-        <div class="post-info-line">
-            <div class="post-info-md"></div>
-            <div class="post-info-share">
-                <span><a href="javascript:void(0);" title="Share on Twitter" data-sharer="twitter" data-url="http://example.org/posts/service/" data-title="Service"><i class="fab fa-twitter fa-fw" aria-hidden="true"></i></a><a href="javascript:void(0);" title="Share on Facebook" data-sharer="facebook" data-url="http://example.org/posts/service/"><i class="fab fa-facebook-square fa-fw" aria-hidden="true"></i></a><a href="javascript:void(0);" title="Share on Hacker News" data-sharer="hackernews" data-url="http://example.org/posts/service/" data-title="Service"><i class="fab fa-hacker-news fa-fw" aria-hidden="true"></i></a><a href="javascript:void(0);" title="Share on Line" data-sharer="line" data-url="http://example.org/posts/service/" data-title="Service"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@7.3.0/icons/line.svg" aria-hidden="true"></i></a><a href="javascript:void(0);" title="Share on 微博" data-sharer="weibo" data-url="http://example.org/posts/service/" data-title="Service"><i class="fab fa-weibo fa-fw" aria-hidden="true"></i></a></span>
-            </div>
-        </div>
-    </div>
-
-    <div class="post-info-more">
-        <section class="post-tags"></section>
-        <section>
-            <span><a href="javascript:void(0);" onclick="window.history.back();">Back</a></span>&nbsp;|&nbsp;<span><a href="/">Home</a></span>
-        </section>
-    </div>
-
-    <div class="post-nav"><a href="/posts/secret/" class="prev" rel="prev" title="Secret"><i class="fas fa-angle-left fa-fw" aria-hidden="true"></i>Secret</a>
-            <a href="/posts/pv_pvc/" class="next" rel="next" title="PV 和 PVC">PV 和 PVC<i class="fas fa-angle-right fa-fw" aria-hidden="true"></i></a></div>
-</div>
-</article></div>
-            </main><footer class="footer">
-        <div class="footer-container"><div class="footer-line">Powered by <a href="https://gohugo.io/" target="_blank" rel="noopener noreffer" title="Hugo 0.101.0">Hugo</a> | Theme - <a href="https://github.com/dillonzq/LoveIt" target="_blank" rel="noopener noreffer" title="LoveIt 0.2.11"><i class="far fa-kiss-wink-heart fa-fw" aria-hidden="true"></i> LoveIt</a>
-                </div><div class="footer-line" itemscope itemtype="http://schema.org/CreativeWork"><i class="far fa-copyright fa-fw" aria-hidden="true"></i><span itemprop="copyrightYear">2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">xuliangTang</a></span></div>
-        </div>
-    </footer></div>
-
-        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="Back to Top">
-                <i class="fas fa-arrow-up fa-fw" aria-hidden="true"></i>
-            </a><a href="#" id="view-comments" class="fixed-button" title="View Comments">
-                <i class="fas fa-comment fa-fw" aria-hidden="true"></i>
-            </a>
-        </div><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.3.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.5.1/sharer.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"Copy to clipboard","maxShownLines":50},"comment":{}};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
-</html>
+</code></pre><p>访问</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>$ curl nginx-svc
+</span></span></code></pre></div></div><div class=post-footer id=post-footer><div class=post-info><div class=post-info-line><div class=post-info-mod><span>Updated on 2022-12-11</span></div></div><div class=post-info-line><div class=post-info-md></div><div class=post-info-share><span><a href=javascript:void(0); title="Share on Twitter" data-sharer=twitter data-url=http://example.org/posts/service/ data-title=Service><i class="fab fa-twitter fa-fw" aria-hidden=true></i></a><a href=javascript:void(0); title="Share on Facebook" data-sharer=facebook data-url=http://example.org/posts/service/><i class="fab fa-facebook-square fa-fw" aria-hidden=true></i></a><a href=javascript:void(0); title="Share on Hacker News" data-sharer=hackernews data-url=http://example.org/posts/service/ data-title=Service><i class="fab fa-hacker-news fa-fw" aria-hidden=true></i></a><a href=javascript:void(0); title="Share on Line" data-sharer=line data-url=http://example.org/posts/service/ data-title=Service><i data-svg-src=https://cdn.jsdelivr.net/npm/simple-icons@7.3.0/icons/line.svg aria-hidden=true></i></a><a href=javascript:void(0); title="Share on 微博" data-sharer=weibo data-url=http://example.org/posts/service/ data-title=Service><i class="fab fa-weibo fa-fw" aria-hidden=true></i></a></span></div></div></div><div class=post-info-more><section class=post-tags></section><section><span><a href=javascript:void(0); onclick=window.history.back()>Back</a></span>&nbsp;|&nbsp;<span><a href=/>Home</a></span></section></div><div class=post-nav><a href=/posts/secret/ class=prev rel=prev title=Secret><i class="fas fa-angle-left fa-fw" aria-hidden=true></i>Secret</a>
+<a href=/posts/pv_pvc/ class=next rel=next title="PV 和 PVC">PV 和 PVC<i class="fas fa-angle-right fa-fw" aria-hidden=true></i></a></div></div></article></div></main><footer class=footer><div class=footer-container><div class=footer-line>Powered by <a href=https://gohugo.io/ target=_blank rel="noopener noreffer" title="Hugo 0.108.0">Hugo</a> | Theme - <a href=https://github.com/dillonzq/LoveIt target=_blank rel="noopener noreffer" title="LoveIt 0.2.11"><i class="far fa-kiss-wink-heart fa-fw" aria-hidden=true></i> LoveIt</a></div><div class=footer-line itemscope itemtype=http://schema.org/CreativeWork><i class="far fa-copyright fa-fw" aria-hidden=true></i><span itemprop=copyrightYear>2022</span><span class=author itemprop=copyrightHolder>&nbsp;<a href=/ target=_blank>xuliangTang</a></span></div></div></footer></div><div id=fixed-buttons><a href=# id=back-to-top class=fixed-button title="Back to Top"><i class="fas fa-arrow-up fa-fw" aria-hidden=true></i>
+</a><a href=# id=view-comments class=fixed-button title="View Comments"><i class="fas fa-comment fa-fw" aria-hidden=true></i></a></div><script type=text/javascript src=https://cdn.jsdelivr.net/npm/lazysizes@5.3.2/lazysizes.min.js></script><script type=text/javascript src=https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js></script><script type=text/javascript src=https://cdn.jsdelivr.net/npm/sharer.js@0.5.1/sharer.min.js></script><script type=text/javascript>window.config={code:{copyTitle:"Copy to clipboard",maxShownLines:50},comment:{}}</script><script type=text/javascript src=/js/theme.min.js></script></body></html>
