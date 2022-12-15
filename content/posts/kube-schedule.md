@@ -39,7 +39,7 @@ kube-scheduler 给一个 Pod 做调度选择时包含两个步骤：
 
 完成上述两个步骤之后，kube-scheduler 会将Pod分配给分数最高的 Node，如果存在多个相同分数的节点，会随机选择一个。
 
-![kube-scheduler filter](https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/kube-scheduler-filter.jpg)
+![](https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/kube-scheduler-filter%20(1)%20(2).jpeg)
 
 ## 将 Pod 指派给节点
 
@@ -157,7 +157,7 @@ $ kubectl describe node lain1 | grep Taints
 $ kubectl taint nodes lain1 key1=value1:NoSchedule
 
 # 删除污点
-# kubectl taint node lain1 key1:NoSchedule -
+$ kubectl taint node lain1 key1:NoSchedule-
 ```
 
 使用容忍

@@ -96,7 +96,7 @@ spec:
 
 hostPath 支持的 type 值如下：
 
-![image-20221204171417323](https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/image-20221204171417323.png)
+![](https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/202212151848317.png)
 
 ### 共享文件夹
 

@@ -10,7 +10,7 @@ kubeadm是官方社区推出的一个用于快速部署kubernetes集群的工具
 ## 部署
 文档地址：[安装 kubeadm | Kubernetes](https://kubernetes.io/zh-cn/docs/setup/production-environment/tools/kubeadm/install-kubeadm)
 
-![image-20221203185600145](https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/image-20221203185600145.png)
+![](https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/202212151842316.png)
 
 ### 添加 kubenetes 的 yum 源
 
@@ -140,7 +140,7 @@ $ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 - Canal: 前两者的合体
 - Weave: 同样支持策略机制，还支持加密
 
-![image-20221203185630984](https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/image-20221203185630984.png)
+![](https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/202212151842523.png)
 
 #### 使用 flannel
 
@@ -171,7 +171,7 @@ kubectl get pods --all-namespaces
 
 #### 可能出现的错误
 
-![image-20221203185645566](https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/image-20221203185645566.png)
+![](https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/202212151846852.png)
 
 基本排查命令
 
@@ -229,7 +229,7 @@ $ systemctl start docker
 
 ##### 节点 not ready
 
-![image-20221203185744006](https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/image-20221203185744006.png)
+![](https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/202212151847731.png)
 
 ```bash
 $ kubectl describe node lain2
