@@ -231,3 +231,53 @@ Events:
   Normal  SuccessfulRescale  20m   horizontal-pod-autoscaler  New size: 5; reason: cpu resource utilization (percentage of request) above target
   Normal  SuccessfulRescale  14m   horizontal-pod-autoscaler  New size: 1; reason: All metrics below target
 ```
+
+
+
+## 可能出现的错误
+
+### Pod 启动异常
+
+> x509: cannot validate certificate for 192.168.0.111 because it doesn't contain any ip sans node="lain1"
+
+因为 Kubelet 证书需要由群集证书颁发机构签名 ，或者给 Metrics Server 增加配置参数 --Kubelet-insecure-tls 来禁用证书验证
+
+![image-20221216180859317](https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/202212161809585.png)
+
+解决这个问题的方法是使用 APIServer 签署 Kubelet 证书。
+
+首先编辑 kube-system namespace 中的 kubelet-config ConfigMap，在 `kind: KubeletConfiguration` 下方增加内容
+
+```
+serverTLSBootstrap: true
+```
+
+然后分别为每个节点上修改 kubelet-config configmap
+
+```bash
+$ sudo vi /var/lib/kubelet/config.yaml
+
+# 在 kind: KubeletConfiguration 下方增加内容
+serverTLSBootstrap: true
+```
+
+然后重启 kubelet
+
+```bash
+$ systemctl restart kubelet
+```
+
+Kubelet 都会生成一个 CSR 并将其提交给 APIServer，您需要为集群上的每个 Kubelet 批准 CSR
+
+```bash
+$ kubectl get csr
+NAME        AGE   SIGNERNAME                      REQUESTOR           CONDITION
+csr-clwz7   44m   kubernetes.io/kubelet-serving   system:node:lain1   Approved,Issued
+csr-w6kpf   34m   kubernetes.io/kubelet-serving   system:node:lain2   Approved,Issued
+
+$ kubectl certificate approve csr-clwz7 csr-w6kpf
+```
+
+默认情况下，这些服务证书将在一年后过期。因此，一年后，Kubelet 将生成一个新的 CSR，您需要批准它
+
+参考：[https://particule.io/en/blog/kubeadm-metrics-server](https://particule.io/en/blog/kubeadm-metrics-server/)

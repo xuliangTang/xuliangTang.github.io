@@ -76,8 +76,8 @@ spec:
 
 节点亲和性有两种：
 
-- **requiredDuringSchedulingIgnoredDuringExecution**：调度器只有在规则被满足的时候才能执行调度。此功能类似于
-- **preferredDuringSchedulingIgnoredDuringExecution**：调度器会尝试寻找满足对应规则的节点。如果找不到匹配的节点，调度器仍然会调度该 Pod。
+- **requiredDuringSchedulingIgnoredDuringExecution**：调度器只有在规则被满足的时候才能执行调度
+- **preferredDuringSchedulingIgnoredDuringExecution**：调度器会尝试寻找满足对应规则的节点。如果找不到匹配的节点，调度器仍然会调度该 Pod
 
 #### 强制的节点亲和性调度
 
