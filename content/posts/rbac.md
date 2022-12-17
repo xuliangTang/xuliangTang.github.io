@@ -79,13 +79,13 @@ $ curl --cert ./client.crt --key ./client.key --cacert /etc/kubernetes/pki/ca.cr
 把 client.crt 加入到 ~/.kube/config
 
 ```bash
-$ kubectl config --kubeconfig=~/.kube/config set-credentials txl --client-certificate=~/ua/txl/client.crt --client-key=~/ua/txl/client.key
+$ kubectl config --kubeconfig=/home/txl/.kube/config set-credentials txl --client-certificate=/home/txl/ua/txl/client.crt --client-key=/home/txl/ua/txl/client.key
 ```
 
 创建一个名为 user_context 的 context
 
 ```bash
-$ kubectl config --kubeconfig=~/.kube/config set-context user_context --cluster=kubernetes --user=txl
+$ kubectl config --kubeconfig=/home/txl/.kube/config set-context user_context --cluster=kubernetes --user=txl
 ```
 
 切换当前上下文为 user_context
@@ -103,6 +103,8 @@ $ kubectl config use-context kubernetes-admin@kubernetes
 
 
 ### B. 使用静态令牌文件(Token)
+
+token 和证书只能配一个
 
 #### 生成 Token
 

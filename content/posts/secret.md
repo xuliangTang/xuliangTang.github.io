@@ -253,8 +253,10 @@ $ docker push <镜像名>
 
 ### 创建 DockerHub Secret
 
+创建一个名为 docker-regcred 的 docker registry secret
+
 ```bash
-$ kubectl create secret docker-registry regcred \
+$ kubectl create secret docker-registry docker-regcred \
     --docker-server=https://index.docker.io/v1/ \
     --docker-username=<用户名> \
     --docker-password=<密码> \
@@ -285,7 +287,7 @@ spec:
         app: myalpine
     spec:
       imagePullSecrets:
-        - name: docker-registry
+        - name: docker-regcred
       containers:
         - name: alpine
           image: lains3/alpine:3.12
