@@ -4,7 +4,7 @@
 
 ## 文章索引
 
-### kubernetes
+### Kubernetes
 
 - December 03, 2022 [使用 kubeadm 部署 k8s](https://xuliangtang.github.io/posts/kubeadm/)
 - December 03, 2022 [k8s 认证和授权](https://xuliangtang.github.io/posts/rbac/)
@@ -18,9 +18,10 @@
 
 
 
-### k8s go-client
+### K8s client-go
 
-- December 18, 2022 [Go client for Kubernetes](https://xuliangtang.github.io/posts/k8s-go/)
+- December 17, 2022 [Go client for Kubernetes](https://xuliangtang.github.io/posts/k8s-go/)
+- December 18, 2022 [list-watch 机制和 Informer 模块](https://xuliangtang.github.io/posts/k8s-list-watch/)
 
 
 
