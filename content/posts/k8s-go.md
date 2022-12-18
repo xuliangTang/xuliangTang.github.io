@@ -69,7 +69,7 @@ $ kubectl describe secret admin-token-nzxlb -n kube-system
 $ kubectl proxy --address='0.0.0.0' --accept-hosts='^*$' --port=8009
 ```
 
-安装客户端库 (版本要对应 [Github]([kubernetes/client-go: Go client for Kubernetes. (github.com)](https://github.com/kubernetes/client-go)))，连接 API Server
+安装客户端库 (版本要对应 [Github](https://github.com/kubernetes/client-go))，连接 API Server
 
 ```go
 var K8sClient *kubernetes.Clientset
