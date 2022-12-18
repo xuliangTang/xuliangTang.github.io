@@ -18,6 +18,12 @@
 
 
 
+### k8s go-client
+
+- December 18, 2022 [Go client for Kubernetes](https://xuliangtang.github.io/posts/k8s-go/)
+
+
+
 ## 其他链接
 
 - [cnblogs](https://www.cnblogs.com/tangxuliang)
