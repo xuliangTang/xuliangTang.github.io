@@ -2,6 +2,9 @@ name: github pages
 
 on:
   push:
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
     branches:
       - main  # Set a branch that will trigger a deployment
   pull_request:
