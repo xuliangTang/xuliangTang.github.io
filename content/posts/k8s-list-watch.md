@@ -22,7 +22,7 @@ list-watach 机制需要满足以下需求：
 
 ## list-watch 机制
 
-list-watch 由两部分组成，分别是 list 和 watch。list 非常好理解，就是调用资源的 list API ，基于 HTTP 短链接实现，watch 则是调用资源的 watch API 监听资源变更事件，基于 HTTP 长链接实现
+list-watch 由两部分组成，分别是 list 和 watch。list 非常好理解，就是调用资源的 list API 罗列资源 ，基于 HTTP 短链接实现，watch 则是调用资源的 watch API 监听资源变更事件，基于 HTTP 长链接实现
 
 etcd 存储集群的数据信息，apiserver 作为统一入口，任何对数据的操作都必须经过 apiserver。客户端通过 list-watch 监听 apiserver 中资源的 create, update 和 delete 事件，并针对事件类型调用相应的事件处理函数
 
@@ -86,3 +86,95 @@ informerFactory.Start(wait.NeverStop)
 select {}
 ```
 
+
+
+## 示例
+
+### 使用 list-watch 查询 deployment
+
+```go
+// 全局对象，存储所有deployments
+var DepMapImpl *DeploymentMap
+
+func init() {
+	DepMapImpl = &DeploymentMap{Data: new(sync.Map)}
+}
+
+type DeploymentMap struct {
+  Data *sync.Map	// key:namespace value:[]*v1.Deployments
+}
+
+// 添加
+func (this *DeploymentMap) Add(deployment *v1.Deployment) {
+	if depList, ok := this.Data.Load(deployment.Namespace); ok {
+		depList = append(depList.([]*v1.Deployment), deployment)
+		this.Data.Store(deployment.Namespace, depList)
+	} else {
+		this.Data.Store(deployment.Namespace, []*v1.Deployment{deployment})
+	}
+}
+
+// 获取列表
+func (this *DeploymentMap) ListByNs(namespace string) ([]*v1.Deployment, error) {
+	if depList, ok := this.Data.Load(namespace); ok {
+		return depList.([]*v1.Deployment), nil
+	}
+
+	return nil, fmt.Errorf("record not found")
+}
+
+// 更新
+func (this *DeploymentMap) Update(deployment *v1.Deployment) error {
+	if depList, ok := this.Data.Load(deployment.Namespace); ok {
+		depList := depList.([]*v1.Deployment)
+		for i, dep := range depList {
+			if dep.Name == deployment.Name {
+				depList[i] = deployment
+				break
+			}
+		}
+		return nil
+	}
+
+	return fmt.Errorf("deployment [%s] not found", deployment.Name)
+}
+
+// 删除
+func (this *DeploymentMap) Delete(deployment *v1.Deployment) {
+	if depList, ok := this.Data.Load(deployment.Namespace); ok {
+		depList := depList.([]*v1.Deployment)
+		for i, dep := range depList {
+			if dep.Name == deployment.Name {
+				newDepList := append(depList[:i], depList[i+1:]...)
+				this.Data.Store(deployment.Namespace, newDepList)
+				break
+			}
+		}
+	}
+}
+
+// informer实现
+type DepHandler struct{}
+func (this *DepHandler) OnAdd(obj interface{}) {
+	DepMapImpl.Add(obj.(*v1.Deployment))
+}
+func (this *DepHandler) OnUpdate(oldObj, newObj interface{}) {
+	err := DepMapImpl.Update(newObj.(*v1.Deployment))
+	if err != nil {
+		log.Println(err)
+	}
+}
+func (this *DepHandler) OnDelete(obj interface{}) {
+	DepMapImpl.Delete(obj.(*v1.Deployment))
+}
+
+// 执行监听
+func InitDeployments() {
+	informerFactory := informers.NewSharedInformerFactory(K8sClient, 0)
+
+	depInformer := informerFactory.Apps().V1().Deployments()
+	depInformer.Informer().AddEventHandler(&DepHandler{})
+
+	informerFactory.Start(wait.NeverStop)
+}
+```
