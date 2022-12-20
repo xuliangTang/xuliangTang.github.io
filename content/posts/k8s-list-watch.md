@@ -90,7 +90,7 @@ select {}
 
 ## 示例
 
-### 使用 list-watch 查询 deployment
+### 监听 deployment
 
 ```go
 // 全局对象，存储所有deployments
@@ -176,5 +176,88 @@ func InitDeployments() {
 	depInformer.Informer().AddEventHandler(&DepHandler{})
 
 	informerFactory.Start(wait.NeverStop)
+}
+```
+
+### 获取 deployment 的关联 pod
+
+之前做过利用 Deployment 的 MatchLabels 去匹配 pod 的 labels 的方式。这次我们利用 ReplicaSet 的标签去匹配 Pod，这种方式可以区分当多个 Deployment 的 Pod 设置为相同标签的场景
+
+当创建完 Deployment 后，k8s 会创建对应的 ReplicaSet，它会根据 template 里的内容进行 hash，然后自动设置一个标签 `pod-template-hash`，且与它管理的所有 Pod 标签相对应
+
+```
+Labels: app=xnginx
+        pod-template-hash=767447889d
+```
+
+我们只需要通过 Deployment 获取它的 ReplicaSet，再拿 labels 去匹配 Pod
+
+- **第一步**：监听 Deployment、ReplicaSet 和 Pod，分别实现对应的 informer 方法，将数据缓存到本地
+
+- **第二步**：通过 Deployment 获取对应的 ReplicaSet，拿到 labels
+
+关键代码：
+
+```go
+// 从本地缓存中取出所有的rs
+rsList, err := RSMapImpl.ListByNs(namespace)
+
+// 获取 labels
+labels, err := GetListWatchRsLabelByDeployment(deployment, rsList)
+```
+
+```go
+// list-watch方式 根据deployment获取当前ReplicaSet的标签
+func GetListWatchRsLabelByDeployment(deployment *v1.Deployment, rsList []*v1.ReplicaSet) (map[string]string, error) {
+	for _, rs := range rsList {
+		if IsCurrentRsByDeployment(rs, deployment) {
+			selector, err := metaV1.LabelSelectorAsMap(rs.Spec.Selector)
+			if err != nil {
+				return nil, err
+			}
+			return selector, nil
+		}
+	}
+
+	return nil, nil
+}
+
+// 判断rs是否对应当前deployment
+func IsCurrentRsByDeployment(set *v1.ReplicaSet, deployment *v1.Deployment) bool {
+	if set.ObjectMeta.Annotations["deployment.kubernetes.io/revision"] != deployment.ObjectMeta.Annotations["deployment.kubernetes.io/revision"] {
+		return false
+	}
+
+	for _, rf := range set.OwnerReferences {
+		if rf.Kind == "Deployment" && rf.Name == deployment.Name {
+			return true
+		}
+	}
+
+	return false
+}
+```
+
+- **第三步**：通过 labels 去匹配 pods
+
+关键代码：
+
+```go
+// 根据标签获取Pod列表
+func (this *PodMap) ListByLabels(ns string, labels map[string]string) ([]*v1.Pod, error) {
+	ret := make([]*v1.Pod, 0)
+	if podList, ok := this.Data.Load(ns); ok {
+		podList := podList.([]*v1.Pod)
+		for _, p := range podList {
+			// 判断标签完全匹配
+			if reflect.DeepEqual(p.Labels, labels) {
+				ret = append(ret, p)
+			}
+		}
+
+		return ret, nil
+	}
+
+	return nil, fmt.Errorf("pods not found")
 }
 ```

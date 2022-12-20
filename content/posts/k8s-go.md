@@ -113,7 +113,9 @@ dep.CreationTimestamp	// 创建时间
 dep.Spec.Template.Spec.Containers[0].Image	// 第一个镜像名称
 ```
 
-### 示例：获取 deployment 关联的所有 pod
+### 示例：获取 deployment 的关联 pod
+
+最简单的方式，利用 Deployment 的 MatchLabels 去匹配 pod 的 labels
 
 ```go
 type PodModel struct {
