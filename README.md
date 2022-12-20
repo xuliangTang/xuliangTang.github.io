@@ -8,7 +8,7 @@
 
 - December 03, 2022 [使用 kubeadm 部署 k8s](https://xuliangtang.github.io/posts/kubeadm/)
 - December 03, 2022 [k8s 认证和授权](https://xuliangtang.github.io/posts/rbac/)
-- December 04, 2022 [Pod](https://xuliangtang.github.io/posts/pod/)
+- December 04, 2022 [Pod、ReplicaSet 和 Deployment](https://xuliangtang.github.io/posts/pod/)
 - December 09, 2022 [ConfigMap](https://xuliangtang.github.io/posts/configmap/)
 - December 10, 2022 [Secret](https://xuliangtang.github.io/posts/secret/)
 - December 11, 2022 [Service](https://xuliangtang.github.io/posts/service/)
