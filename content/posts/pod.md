@@ -1,5 +1,5 @@
 ---
-title: "Pod"
+title: "Pod、ReplicaSet 和 Deployment"
 date: 2022-12-04
 draft: false
 Categories: [kubernetes]
@@ -55,9 +55,17 @@ myngx   1/1     Running   0          13m   10.244.3.7   lain2   <none>          
 
 
 
+## ReplicaSet
+
+ReplicaSet 是为了保持维护的期待 Pod 副本数量与现时 Pod 副本数量一致。如在由于 Pod 异常退出导致期待的副本数量不足时，会自动创建新的 Pod 保证到与期望的 Pod 副本数量一致
+
+
+
 ## 使用 Deployment
 
-deployment 运行一组相同的 Pod（副本水平扩展）、滚动更新。通过副本集管理和创建POD
+Deployment 运行一组相同的 Pod（副本水平扩展）、滚动更新。通过副本集管理和创建POD。我们往往不会直接在集群中使用 ReplicaSet 部署一个新的微服务，一方面是因为 ReplicaSet 的功能其实不够强大，一些常见的更新、扩容和缩容运维操作都不支持，Deployment 的引入就是为了就是为了支持这些复杂的操作
+
+![image-20221220192348847](https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202212201923111.png)
 
 ### 挂载
 
