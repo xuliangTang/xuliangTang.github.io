@@ -261,3 +261,137 @@ func (this *PodMap) ListByLabels(ns string, labels map[string]string) ([]*v1.Pod
 	return nil, fmt.Errorf("pods not found")
 }
 ```
+
+### 获取 Pod 状态和 Event
+
+Pod 状态信息包含：
+
+- **阶段**：Pod 的 status 字段是一个 PodStatus 对象，其中包含一个 phase 字段
+
+| 取值                | 描述                                                         |
+| :------------------ | :----------------------------------------------------------- |
+| `Pending`（悬决）   | Pod 已被 Kubernetes 系统接受，但有一个或者多个容器尚未创建亦未运行。此阶段包括等待 Pod 被调度的时间和通过网络下载镜像的时间。 |
+| `Running`（运行中） | Pod 已经绑定到了某个节点，Pod 中所有的容器都已被创建。至少有一个容器仍在运行，或者正处于启动或重启状态。 |
+| `Succeeded`（成功） | Pod 中的所有容器都已成功终止，并且不会再重启。               |
+| `Failed`（失败）    | Pod 中的所有容器都已终止，并且至少有一个容器是因为失败终止。也就是说，容器以非 0 状态退出或者被系统终止。 |
+| `Unknown`（未知）   | 因为某些原因无法取得 Pod 的状态。这种情况通常是因为与 Pod 所在主机通信失败。 |
+
+- **状况**：PodStatus 对象包含一个 PodConditions 数组
+
+| 字段名称             | 描述                                                         |
+| :------------------- | :----------------------------------------------------------- |
+| `type`               | Pod 状况的名称                                               |
+| `status`             | 表明该状况是否适用，可能的取值有 "`True`"、"`False`" 或 "`Unknown`" |
+| `lastProbeTime`      | 上次探测 Pod 状况时的时间戳                                  |
+| `lastTransitionTime` | Pod 上次从一种状态转换到另一种状态时的时间戳                 |
+| `reason`             | 机器可读的、驼峰编码（UpperCamelCase）的文字，表述上次状况变化的原因 |
+| `message`            | 人类可读的消息，给出上次状态转换的详细信息                   |
+
+>`PodScheduled`：Pod 已经被调度到某节点
+>
+>`PodHasNetwork`：Pod 沙箱被成功创建并且配置了网络（Alpha 特性，必须被显式启用）
+>
+>`ContainersReady`：Pod 中所有容器都已就绪
+>
+>`Initialized`：所有的 Init 容器都已成功完成
+>
+>`Ready`：Pod 可以为请求提供服务，并且应该被添加到对应服务的负载均衡池中
+
+- **事件对象**：为用户提供了洞察集群内发生的事情的能力。为了避免主节点磁盘空间被填满，将强制执行保留策略：事件在最后一次发生的一小时后将会被删除
+
+关键代码：
+
+```go
+// EventMapImpl 全局对象，存储所有Event
+var EventMapImpl *EventMap
+
+func init() {
+	EventMapImpl = &EventMap{Data: new(sync.Map)}
+}
+
+type EventMap struct {
+	Data *sync.Map // key:namespace_kind_name value: *v1.Event
+}
+
+func (this *EventMap) GetKey(event *v1.Event) string {
+	key := fmt.Sprintf("%s_%s_%s", event.Namespace, event.InvolvedObject.Kind, event.InvolvedObject.Name)
+	return key
+}
+
+// Add 添加
+func (this *EventMap) Add(event *v1.Event) {
+	EventMapImpl.Data.Store(this.GetKey(event), event)
+}
+
+// Delete 删除
+func (this *EventMap) Delete(event *v1.Event) {
+	EventMapImpl.Data.Delete(this.GetKey(event))
+}
+
+// 获取最新一条event message
+func (this *EventMap) GetMessage(ns string, kind string, name string) string {
+	key := fmt.Sprintf("%s_%s_%s", ns, kind, name)
+	if v, ok := this.Data.Load(key); ok {
+		return v.(*v1.Event).Message
+	}
+
+	return ""
+}
+
+// EventHandler informer实现
+type EventHandler struct{}
+
+func (this *EventHandler) OnAdd(obj interface{}) {
+	EventMapImpl.Add(obj.(*v1.Event))
+}
+func (this *EventHandler) OnUpdate(oldObj, newObj interface{}) {
+	EventMapImpl.Add(newObj.(*v1.Event))
+}
+func (this *EventHandler) OnDelete(obj interface{}) {
+	EventMapImpl.Delete(obj.(*v1.Event))
+}
+```
+
+```go
+// 评估Pod是否就绪
+func GetPodIsReady(pod *coreV1.Pod) bool {
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == "ContainersReady" && condition.Status != "True" {
+			return false
+		}
+	}
+	
+	for _, rg := range pod.Spec.ReadinessGates {
+		for _, condition := range pod.Status.Conditions {
+			if condition.Type == rg.ConditionType && condition.Status != "True" {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+// 获取pods DTO 把原生的 pod 对象转换为自己的实体对象
+func GetPodsByLabels(ns string, labels []map[string]string) (pods []*model.PodModel) {
+	podList, err := PodMapImpl.ListByLabels(ns, labels)
+	lib.CheckError(err)
+
+	pods = make([]*model.PodModel, len(podList))
+
+	for i, pod := range podList {
+		pods[i] = &model.PodModel{
+			Name:      pod.Name,
+			NodeName:  pod.Spec.NodeName,
+			Images:    GetPodImages(pod.Spec.Containers),
+			Phase:     string(pod.Status.Phase),
+			IsReady:   GetPodIsReady(pod),
+			Message:   EventMapImpl.GetMessage(pod.Namespace, "Pod", pod.Name),
+			CreatedAt: pod.CreationTimestamp.Format("2006-01-02 15:04:05"),
+		}
+	}
+
+	return
+}
+```
+
