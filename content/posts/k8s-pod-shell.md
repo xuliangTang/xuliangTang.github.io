@@ -1,11 +1,11 @@
 ---
-title: "k8s远程进入容器terminal"
+title: "k8s 远程进入容器 terminal"
 date: 2023-01-05
 draft: false
 Categories: [k8s-go]
 ---
 
-K8s 实现的“进入某个容器”的功能，底层本质是 Docker 容器通过 exec 进入容器的扩展。本质是新建了一个“与目标容器，共享 namespace 的”新的 shell 进程。所以该 shell 进程，看到的世界，就是容器内的世界了。
+k8s 实现的“进入某个容器”的功能，底层本质是 Docker 容器通过 exec 进入容器的扩展。本质是新建了一个“与目标容器，共享 namespace 的”新的 shell 进程。所以该 shell 进程，看到的世界，就是容器内的世界了。
 
 通过 client-go 提供的方法，实现通过网页进入 kubernetes 任意容器的终端操作
 

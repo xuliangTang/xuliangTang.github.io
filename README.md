@@ -22,7 +22,7 @@
 
 - December 17, 2022 [Go client for Kubernetes](https://xuliangtang.github.io/posts/k8s-go/)
 - December 18, 2022 [list-watch 机制和 Informer 模块](https://xuliangtang.github.io/posts/k8s-list-watch/)
-- December 05, 2023 [远程进入容器 terminal](https://xuliangtang.github.io/posts/k8s-pod-shell/)
+- January 05, 2023 [远程进入容器 terminal](https://xuliangtang.github.io/posts/k8s-pod-shell/)
 
 
 
