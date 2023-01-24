@@ -232,6 +232,8 @@ subjects:
 - apiGroup: rbac.authorization.k8s.io
   kind: User
   name: txl
+- kind: ServiceAccount
+  name: txl
 ```
 
 查看
@@ -296,7 +298,7 @@ roleRef:
 subjects:
 - apiGroup: rbac.authorization.k8s.io
   kind: User
-  name: shenyi
+  name: txl
 ```
 
 查看
@@ -322,6 +324,9 @@ subjects:
  - apiGroup: rbac.authorization.k8s.io
    kind: User
    name: txl
+ - kind: ServiceAccount
+   name: txl
+   namespace: default
 ```
 
 
