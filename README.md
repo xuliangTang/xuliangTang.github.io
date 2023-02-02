@@ -32,6 +32,12 @@
 
 
 
+### Istio
+
+- February 02, 2023 [Istio 快速入门](https://xuliangtang.github.io/posts/istio/)
+
+
+
 ## 其他链接
 
 - [cnblogs](https://www.cnblogs.com/tangxuliang)
