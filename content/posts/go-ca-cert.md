@@ -75,7 +75,7 @@ func main() {
 		IsCA:                  false,                                                                      // 是否是根证书
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth}, // 证书用途(客户端认证，数据加密)
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageDataEncipherment,
-		EmailAddresses:        []string{"UserAccount@jtthink.com"},
+		EmailAddresses:        []string{"UserAccount@virtuallain.com"},
 	}
 
 	// 生成公私钥秘钥对
