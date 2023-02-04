@@ -26,10 +26,16 @@ Istio 服务网格有两个部分：数据平面和控制平面
 
 ## 安装
 
-从 [Github](https://github.com/istio/istio/releases) 上下载 Istio，执行
+从 [Github](https://github.com/istio/istio/releases) 上下载 Istio， (测试环境) 执行
 
 ```bash
 istioctl manifest apply --set profile=demo
+```
+
+可以查看其中的配置
+
+```bash
+istioctl profile dump demo
 ```
 
 
@@ -515,3 +521,30 @@ spec:
           values: ["admin","superadmin"]
 ```
 
+
+
+## 开启自动 mTLS 
+
+服务中的工作负载之间的通信是通过 Envoy 代理进行的。当一个工作负载使用 mTLS 向另一个工作负载发送请求时，Istio 会将流量重新路由到 sidecar 代理（Envoy）
+
+然后，sidecar Envoy 开始与服务器端的 Envoy 进行 mTLS 握手。在握手过程中，调用者会进行安全命名检查，以验证服务器证书中的服务账户是否被授权运行目标服务。一旦 mTLS 连接建立，Istio 就会将请求从客户端的 Envoy 代理转发到服务器端的 Envoy 代理。在服务器端的授权后，sidecar 将流量转发到工作负载
+
+可以创建 PeerAuthentication 资源，首先在每个命名空间中分别执行严格模式。然后，我们可以在根命名空间创建一个策略，在整个服务网格中执行该策略。或者指定 selector，仅应用于网格中的特定工作负载。它有三大模式：
+
+- `PERMISSIVE`：同时接受未加密连接和双向加密连接
+- `STRICT`：只接受加密连接
+- `DISABLE`：关闭双向加密连接
+
+```yaml
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: testmtls
+  namespace: myistio
+spec:
+  selector:
+    matchLabels:
+      app: reviews
+  mtls:
+    mode: STRICT
+```
