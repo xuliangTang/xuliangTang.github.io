@@ -354,3 +354,470 @@ func main() {
 	fmt.Println(string(b))
 }
 ```
+
+
+
+## Envoy 限流过滤器
+
+Envoy 支持两种速率限制：全局和本地。本地限流是在envoy内部提供一种令牌桶限速的功能，全局限流需要访问外部限速服务。下面是一个使用全局限流的示例
+
+### 基本配置
+
+**1. 限流配置**
+
+这个 ConfigMap 是限速服务用到的配置文件，在 EnvoyFilter 中被引用。这里配置了 /prods 每分钟限流3个请求，其他 url 限流每分钟100个请求
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ratelimit-config
+data:
+  config.yaml: |
+    domain: prod-ratelimit
+    descriptors:
+      - key: PATH
+        value: "/prods"
+        rate_limit:
+          unit: minute
+          requests_per_unit: 3
+      - key: PATH
+        rate_limit:
+          unit: minute
+          requests_per_unit: 100
+```
+
+**2. 独立限流服务**
+
+参考 [官方 rate-limit-service.yaml](https://github.com/istio/istio/blob/release-1.9/samples/ratelimit/rate-limit-service.yaml)
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  labels:
+    app: redis
+spec:
+  ports:
+    - name: redis
+      port: 6379
+  selector:
+    app: redis
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - image: redis:alpine
+          imagePullPolicy: Always
+          name: redis
+          ports:
+            - name: redis
+              containerPort: 6379
+      restartPolicy: Always
+      serviceAccountName: ""
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ratelimit
+  labels:
+    app: ratelimit
+spec:
+  ports:
+    - name: http-port
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+    - name: grpc-port
+      port: 8081
+      targetPort: 8081
+      protocol: TCP
+    - name: http-debug
+      port: 6070
+      targetPort: 6070
+      protocol: TCP
+  selector:
+    app: ratelimit
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ratelimit
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ratelimit
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: ratelimit
+    spec:
+      containers:
+        - image: envoyproxy/ratelimit:6f5de117 # 2021/01/08
+          imagePullPolicy: Always
+          name: ratelimit
+          command: ["/bin/ratelimit"]
+          env:
+            - name: LOG_LEVEL
+              value: debug
+            - name: REDIS_SOCKET_TYPE
+              value: tcp
+            - name: REDIS_URL
+              value: redis:6379
+            - name: USE_STATSD
+              value: "false"
+            - name: RUNTIME_ROOT
+              value: /data
+            - name: RUNTIME_SUBDIRECTORY
+              value: ratelimit
+          ports:
+            - containerPort: 8080
+            - containerPort: 8081
+            - containerPort: 6070
+          volumeMounts:
+            - name: config-volume
+              mountPath: /data/ratelimit/config/config.yaml
+              subPath: config.yaml
+      volumes:
+        - name: config-volume
+          configMap:
+            name: ratelimit-config
+```
+
+**3. 创建 EnvoyFilter**
+
+这个 EnvoyFilter 作用在网关上，配置了 http 过滤器 envoy.filters.http.ratelimit，和一个 cluster。http 过滤器的 cluster 地址指向 cluster 配置的地址，就是 ratelimit service 所在的地址。domain 和步骤1中 configmap 的值一致，failure_mode_deny 表示超过请求限值就拒绝，rate_limit_service 配置 ratelimit 服务的地址（cluster），可以配置 grpc 类型或 http 类型
+
+```yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: filter-ratelimit
+  namespace: istio-system
+spec:
+  workloadSelector:
+    # select by label in the same namespace
+    labels:
+      istio: ingressgateway
+  configPatches:
+    # The Envoy config you want to modify
+    - applyTo: HTTP_FILTER
+      match:
+        context: GATEWAY
+        listener:
+          filterChain:
+            filter:
+              name: "envoy.filters.network.http_connection_manager"
+              subFilter:
+                name: "envoy.filters.http.router"
+      patch:
+        operation: INSERT_BEFORE
+        # Adds the Envoy Rate Limit Filter in HTTP filter chain.
+        value:
+          name: envoy.filters.http.ratelimit
+          typed_config:
+            "@type": type.googleapis.com/envoy.extensions.filters.http.ratelimit.v3.RateLimit
+            # domain can be anything! Match it to the ratelimter service config
+            domain: prod-ratelimit
+            failure_mode_deny: true
+            rate_limit_service:
+              grpc_service:
+                envoy_grpc:
+                  cluster_name: rate_limit_cluster
+                timeout: 10s
+              transport_api_version: V3
+    - applyTo: CLUSTER
+      match:
+        cluster:
+          service: ratelimit.default.svc.cluster.local
+      patch:
+        operation: ADD
+        # Adds the rate limit service cluster for rate limit service defined in step 1.
+        value:
+          name: rate_limit_cluster
+          type: STRICT_DNS
+          connect_timeout: 10s
+          lb_policy: ROUND_ROBIN
+          http2_protocol_options: {}
+          load_assignment:
+            cluster_name: rate_limit_cluster
+            endpoints:
+              - lb_endpoints:
+                  - endpoint:
+                      address:
+                        socket_address:
+                          address: ratelimit.default.svc.cluster.local
+                          port_value: 8081
+```
+
+**4. 创建 Action EnvoyFilter**
+
+这个 EnvoyFilter 作用在入口网关处，给80端口的虚拟主机配置了一个 rate_limits 动作，descriptor_key 用于选择在 configmap 里配置的 key
+
+```yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: filter-ratelimit-svc
+  namespace: istio-system
+spec:
+  workloadSelector:
+    labels:
+      istio: ingressgateway
+  configPatches:
+    - applyTo: VIRTUAL_HOST
+      match:
+        context: GATEWAY
+        routeConfiguration:
+          vhost:
+            name: "p.virtuallain.com:80"
+            route:
+              action: ANY
+      patch:
+        operation: MERGE
+        # Applies the rate limit rules.
+        value:
+          rate_limits:
+            - actions:
+              - request_headers:
+                  header_name: :path  # 内置的头匹配器，有 :path :method
+                  descriptor_key: "PATH"
+```
+
+### 使用 header_value_match
+
+参考 [文档](https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/route/v3/route_components.proto#config-route-v3-ratelimit-action-headervaluematch)
+
+**修改 Action EnvoyFilter**
+
+下面第一个 action 配置了 /prods/\d+ 路由规则的匹配。第二个 action 配置了存在头 version=v2 的匹配
+
+```yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: filter-ratelimit-svc
+  namespace: istio-system
+spec:
+  workloadSelector:
+    labels:
+      istio: ingressgateway
+  configPatches:
+    - applyTo: VIRTUAL_HOST
+      match:
+        context: GATEWAY
+        routeConfiguration:
+          vhost:
+            name: "p.virtuallain.com:80"
+            route:
+              action: ANY
+      patch:
+        operation: MERGE
+        # Applies the rate limit rules.
+        value:
+          rate_limits:
+            - actions:
+                - header_value_match:
+                    descriptor_value: path
+                    headers:
+                      - name: :path
+                        # exact_match: /prods
+                        safe_regex_match: # 正则匹配
+                          google_re2: {}
+                          regex: /prods/\d+
+             - actions:
+                - header_value_match:
+                    descriptor_value: version-v2
+                    headers:
+                      - name: version
+                        exact_match: v2
+```
+
+基本的匹配方式有：
+
+- exact_match：精确匹配
+- safe_regex_match：正则匹配
+- range_match：范围匹配（数字范围，如[-10,0)）
+- prefix_match：前缀匹配
+- suffix_match：后缀匹配
+- contains_match：包含匹配
+- invert_match：反向匹配
+
+**修改 ConfigMap 配置**
+
+下面配置了 /prods/\d+ 的路由每分钟限流5次，当存在 header 头 version=v2 时每分钟限流2次。同时匹配到多个规则时优先生效次数少的规则。value 关联 header_value_match 里的 descriptor_value
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ratelimit-config
+data:
+  config.yaml: |
+    domain: prod-ratelimit
+    descriptors:
+      - key: header_match
+        value: path
+        rate_limit:
+          requests_per_unit: 5
+          unit: minute
+      - key: header_match
+        value: version-v2
+        rate_limit:
+          requests_per_unit: 2
+          unit: minute
+```
+
+### IP 限流
+
+**修改 Action EnvoyFilter**
+
+```yaml
+rate_limits:
+  - actions:
+      - remote_address: {}
+```
+
+**修改 ConfigMap 配置**
+
+```yaml
+data:
+  config.yaml: |
+    domain: prod-ratelimit
+    descriptors:
+      - key: remote_address
+        rate_limit:
+          requests_per_unit: 10
+          unit: minute
+```
+
+**X-Forwarded-For 配置** 
+
+当存在多个受信任代理的环境中，需要配置生效的 XFF 是第几个，参考 [文档](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/headers#config-http-conn-man-headers-x-forwarded-for)。实际运行可以用 nginx-ingress 来反代 istio 的 gateway 从而自动传递这个头
+
+```yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: xff-trust-hops
+  namespace: istio-system
+spec:
+  workloadSelector:
+    labels:
+      istio: ingressgateway
+  configPatches:
+    - applyTo: NETWORK_FILTER
+      match:
+        context: ANY
+        listener:
+          filterChain:
+            filter:
+              name: "envoy.filters.network.http_connection_manager"
+      patch:
+        operation: MERGE
+        value:
+          typed_config:
+            "@type": "type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager"
+            use_remote_address: true
+            xff_num_trusted_hops: 1 # Change as needed
+```
+
+### IP 组合条件限流
+
+**修改 Action EnvoyFilter**
+
+```yaml
+rate_limits:
+  - actions:
+      - header_value_match:
+          descriptor_value: path
+          headers:
+            - name: :path
+              safe_regex_match:
+                google_re2: {}
+                regex: /prods/\d+
+      - remote_address: {}
+```
+
+**修改 ConfigMap 配置**
+
+下面配置了每个 ip 在 /prods/\d+ 的路由每分钟限流5次
+
+```yaml
+data:
+  config.yaml: |
+    domain: prod-ratelimit
+    descriptors:
+      - key: header_match
+        value: path
+        descriptors:
+          - key: remote_address
+            rate_limit:
+              requests_per_unit: 5
+              unit: minute
+```
+
+### 自定义限流服务
+
+上面使用的是官方 [envoyproxy/ratelimit](https://github.com/envoyproxy/ratelimit) 限流服务，也可以自己实现一个。示例：
+
+```go
+package main
+
+import (
+	"context"
+	pb "github.com/envoyproxy/go-control-plane/envoy/service/ratelimit/v3"
+	"google.golang.org/grpc"
+	"log"
+	"net"
+	"time"
+)
+
+type MyServer struct{}
+
+func NewMyServer() *MyServer {
+	return &MyServer{}
+}
+
+// 实现限流方法
+func (s *MyServer) ShouldRateLimit(ctx context.Context, request *pb.RateLimitRequest) (*pb.RateLimitResponse, error) {
+	var overallCode pb.RateLimitResponse_Code
+	if time.Now().Unix()%2 == 0 {
+		log.Println("限流了")
+		overallCode = pb.RateLimitResponse_OVER_LIMIT
+	} else {
+		log.Println("通过了")
+		overallCode = pb.RateLimitResponse_OK
+	}
+	response := &pb.RateLimitResponse{OverallCode: overallCode}
+	return response, nil
+}
+
+func main() {
+	lis, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		log.Fatal(err)
+	}
+	s := grpc.NewServer()
+	pb.RegisterRateLimitServiceServer(s, NewMyServer())
+	if err := s.Serve(lis); err != nil {
+		log.Fatal(err)
+	}
+}
+```
