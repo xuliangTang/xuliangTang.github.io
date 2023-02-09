@@ -16,6 +16,7 @@
 - December 12, 2022 [Pod 水平自动扩缩 HPA](https://xuliangtang.github.io/posts/hpa/)
 - December 13, 2022 [调度器 kube-schedule](https://xuliangtang.github.io/posts/kube-schedule/)
 - February 07, 2023 [Kustomize](https://xuliangtang.github.io/posts/kustomize/)
+- February 09, 2023 [构建 Admission Webhook](https://xuliangtang.github.io/posts/admission-webhook/)
 
 
 
