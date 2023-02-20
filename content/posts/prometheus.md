@@ -676,3 +676,47 @@ kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1/namespaces/default/servic
 ```
 sum(rate(lain_prods_visit[1m])) by(svcname)
 ```
+
+
+
+## 自定义 metrics HPA
+
+当 HPA 请求 metrics 时，`kube-aggregator`（apiservice 的 controller）会将请求转发到 adapter，adapter 作为 Kubernetes 集群的 pod，实现了 Kubernetes resource metrics API 和 custom metrics API，它会根据配置的 rules 从 Prometheus 抓取并处理 metrics，在处理（如重命名 metrics 等）完后将 metric 通过 custom metrics API 返回给 HPA，最后 HPA 通过获取的 metrics 的 value 对 Deployment / ReplicaSet 进行扩缩容
+
+adapter 作为`extension-apiserver（即自己实现的pod）`，充当了代理 kube-apiserver 请求 Prometheus 的功能
+
+下面是一个 HPA 对业务 pod 进行扩容的示例：
+
+```yaml
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: prodhpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: prodmetrics	# 指向上方创建的deploy
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+  - type: Object
+    object:
+      metric:
+        name: prods_visit	# 指标
+      describedObject:
+        apiVersion: v1
+        kind: Service
+        name: prodmetrics
+      target:
+        type: Value
+        value: 3000m
+```
+
+### 缩容
+
+在  kube-controller-manager 配置文件中（kubeadm 安装默认在 /etc/kubernetes/manifests/kube-controller-manager.yaml），默认值是5分钟
+
+```yaml
+--horizontal-pod-autoscaler-downscale-stabilization=5m
+```
