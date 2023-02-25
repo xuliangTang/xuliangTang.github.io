@@ -19,6 +19,7 @@
 - February 09, 2023 [构建 Admission Webhook](https://xuliangtang.github.io/posts/admission-webhook/)
 - February 12, 2023 [使用 kubebuilder 开发 Operator](https://xuliangtang.github.io/posts/operator/)
 - February 19, 2023 [Prometheus 入门](https://xuliangtang.github.io/posts/prometheus/)
+- February 25, 2023 [Fluent Bit 日志收集](https://xuliangtang.github.io/posts/fluent-bit/)
 
 
 
