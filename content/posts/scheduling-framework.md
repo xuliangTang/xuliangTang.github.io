@@ -3,6 +3,7 @@ title: "自定义 POD 调度 Scheduling Framework"
 date: 2023-02-26
 draft: false
 Categories: [kubernetes]
+math: true
 ---
 
 kube-scheduler 是 kubernetes 的核心组件之一，主要负责整个集群资源的调度功能，根据特定的调度算法和策略，将 Pod 调度到最优的工作节点上面去，从而更加合理、更加充分的利用集群的资源
@@ -531,7 +532,6 @@ preScore:
 然后就可以在后续扩展点通过 `getNodeMemory, err := state.Read("nodeMemory")` 获取值
 
 ### Score 打分
-
 最终的分数需要在 [MinNodeScore，MaxNodeScore]（[0-100]）之间，为了防止分数超出，需要做归一化（Min-Max Normalization ）处理，这是最常见的 min-max 归一化公式
 $$
 X_{nom} = \frac{X - X_{min}}{X_{max} - X_{min}}

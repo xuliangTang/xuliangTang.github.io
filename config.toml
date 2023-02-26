@@ -190,9 +190,26 @@ enableEmoji = true
       # 默认展开显示的代码行数
       maxShownLines = 100
 
+    # LoveIt 更改 | 0.2.0 KaTeX 数学公式
+    [params.page.math]
+      enable = true
+      # LoveIt 更改 | 0.2.11 默认行内定界符是 $ ... $ 和 \( ... \)
+      inlineLeftDelimiter = ""
+      inlineRightDelimiter = ""
+      # LoveIt 更改 | 0.2.11 默认块定界符是 $$ ... $$, \[ ... \], \begin{equation} ... \end{equation} 和一些其它的函数
+      blockLeftDelimiter = ""
+      blockRightDelimiter = ""
+      # KaTeX 插件 copy_tex
+      copyTex = true
+      # KaTeX 插件 mhchem
+      mhchem = true
+      
   # 作者的社交信息设置
   [params.social]
     GitHub = "xuliangTang"
+
+  [params.math]
+    enable = true
 
 [outputs]
   home = ["HTML", "RSS", "JSON"]
