@@ -35,6 +35,7 @@
 ### Golang
 
 - January 24, 2023 [使用 Go 生成自签 CA 证书](https://xuliangtang.github.io/posts/go-ca-cert/)
+- March 12, 2023 [Go 使用 gRPC](https://xuliangtang.github.io/posts/grpc/)
 
 
 
