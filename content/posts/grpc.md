@@ -186,7 +186,7 @@ protoc320 --proto_path=protos --include_imports --include_source_info --descript
 go get -d github.com/envoyproxy/protoc-gen-validate
 ```
 
-验证示例：
+在 proto 中定义验证规则：
 
 ```protobuf
 syntax = "proto3";
@@ -202,6 +202,16 @@ message ProdRequest {
 
 ```bash
 protoc320 --proto_path=protos --go_out=./ --validate_out="lang=go:./" models.proto
+```
+
+在 service 中验证：
+
+```go
+func (p ProdService) GetProd(ctx context.Context, request *pbfiles.ProdRequest) (*pbfiles.ProdResponse, error) {
+	if err := request.Validate(); err != nil {
+		return nil, err
+	}
+}
 ```
 
 
