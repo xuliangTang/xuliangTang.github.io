@@ -384,3 +384,103 @@ func RBAC(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, hand
 	return handler(ctx, req)
 }
 ```
+
+
+
+## gRPC-Gateway 
+
+[gRPC-Gateway](https://github.com/grpc-ecosystem/grpc-gateway) 是 Google protocol buffers compiler(protoc) 的一个插件，读取 protobuf 定义然后生成反向代理服务器，将 RESTful HTTP API 转换为 gRPC
+
+当 HTTP 请求到达 gRPC-Gateway 时，它将 JSON 数据解析为 Protobuf 消息。然后，它使用解析的 Protobuf 消息发出正常的 Go gRPC 客户端请求。Go gRPC 客户端将 Protobuf 结构编码为 Protobuf 二进制格式，然后将其发送到 gRPC 服务器。gRPC 服务器处理请求并以 Protobuf 二进制格式返回响应。Go gRPC 客户端将其解析为 Protobuf 消息，并将其返回到 gRPC-Gateway，后者将 Protobuf 消息编码为 JSON 并将其返回给原始客户端
+
+```bash
+# 安装gRPC-Gateway插件
+go get github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway
+```
+
+### 基本流程
+
+由 protoc 将 .proto 文件编译成 protobuf 格式的数据，将编译后的数据传递到各个插件，生成对应语言、对应模块的源代码：
+
+- Go Plugins 用于生成 .pb.go 文件
+- gRPC Plugins 用于生成 _grpc.pb.go
+- gRPC-Gateway 则是 pb.gw.go
+
+比如以下命令会同时生成 Go、gRPC 、gRPC-Gateway 需要的 3 个文件：
+
+```bash
+protoc --go_out . --go-grpc_out . --grpc-gateway_out . test.proto
+```
+
+### 示例
+
+**1. proto 文件增加http相关注解**
+
+需要引入 google/api/annotations.proto 文件，因为添加的注解依赖该文件。可以从 [googleapis/googleapis](https://github.com/googleapis/googleapis) 获取并拷贝到同级目录
+
+```protobuf
+syntax = "proto3";
+option go_package = "src/pbfiles";
+import "models.proto";
+import "google/api/annotations.proto";
+
+service ProdService {
+  rpc GetProd(ProdRequest) returns (ProdResponse){
+    option (google.api.http) = {
+      get: "/prod/{prod_id}"
+    };
+  }
+  rpc UpdateProd(ProdRequest) returns (ProdResponse){
+    option (google.api.http) = {
+      post: "/prod/update"
+      body: "*"
+    };
+  }
+}
+```
+
+**2. 编译**
+
+```bash
+protoc320 --proto_path=protos --go_out=./ --validate_out="lang=go:./" models.proto
+protoc320 --proto_path=protos --go_out=./ --go-grpc_out=./ --grpc-gateway_out=./ service.proto
+```
+
+**3. http 反向代理**
+
+```go
+func run() error {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	cert, _ := tls.LoadX509KeyPair("certs/client.crt", "certs/client.key")
+	certPool := x509.NewCertPool()
+	ca, _ := os.ReadFile("certs/ca.crt")
+	certPool.AppendCertsFromPEM(ca)
+
+	creds := credentials.NewTLS(&tls.Config{
+		Certificates: []tls.Certificate{cert}, //客户端证书
+		ServerName:   "grpc.virtuallain.com",
+		RootCAs:      certPool,
+	})
+	
+	mux := runtime.NewServeMux()
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
+	err := pbfiles.RegisterProdServiceHandlerFromEndpoint(ctx, mux, "localhost:8080", opts)
+	if err != nil {
+		return err
+	}
+	
+	return http.ListenAndServe(":8081", mux)
+}
+
+func main() {
+	flag.Parse()
+	defer glog.Flush()
+
+	if err := run(); err != nil {
+		glog.Fatal(err)
+	}
+}
+```
