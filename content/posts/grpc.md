@@ -484,3 +484,51 @@ func main() {
 	}
 }
 ```
+
+
+
+## gRPC Web
+
+[gRPC Web](https://github.com/grpc/grpc-web) 结合 Envoy（或 [gRPC Web 代理](https://github.com/improbable-eng/grpc-web)）是完成 web 调用 gRPC 的一种方式
+
+首先下载  protoc-gen-grpc-web 可执行程序放入 bin 目录
+
+编译 proto 生成 js 文件到 html 目录下：
+
+```bash
+protoc320 --proto_path=protos --js_out=import_style=commonjs:html --grpc-web_out=import_style=commonjs,mode=grpcwebtext:html models.proto
+protoc320 --proto_path=protos --js_out=import_style=commonjs:html --grpc-web_out=import_style=commonjs,mode=grpcwebtext:html service.proto
+```
+
+安装前端运行时库：
+
+```bash
+npm install google-protobuf
+npm install grpc-web
+```
+
+示例：
+
+```js
+import { ProdServiceClient } from '@/grpc/service_grpc_web_pb'
+import { ProdRequest } from '@/grpc/models_pb'
+
+const client = new ProdServiceClient('http://localhost:8081'); // 代理地址
+
+const req = new ProdRequest()
+req.setProdId("101")
+const metadata = {"Content-Type": "application/grpc-web-text"};
+client.getProd(req,metadata,(err,rsp)=>{
+  if (err) {
+    console.log(err.message);
+  } else {
+    console.log(rsp);
+  }
+})
+```
+
+启动代理：
+
+```bash
+grpcwebproxy --backend_addr=localhost:8080 --server_http_debug_port=8081 --allow_all_origins --server_tls_cert_file=./server.pem  --server_tls_key_file=./server.key --backend_client_tls_cert_file=./client.crt --backend_client_tls_key_file=./client.key --backend_tls_ca_files=./ca.crt --backend_tls=true
+```
