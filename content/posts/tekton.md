@@ -247,7 +247,7 @@ gitlab、github 的 webhook 就是一种最常用的外部事件，通过 Trigge
 - **ClusterTriggerBinding**：和 TriggerBinding 相似，用于提取事件字段，不过它是集群级别的对象
 - **Interceptors**：拦截器，在 TriggerBinding 之前运行，用于负载过滤、验证、转换等处理，只有通过拦截器的数据才会传递给TriggerBinding
 
-### 示例
+### 基本示例
 
 **创建 RBAC**
 
@@ -297,7 +297,7 @@ spec:
     - name: gitrevision
       value: master
     - name: gitrepositoryurl
-      value: $(body.repository.url)
+      value: $(body.repository.ssh_url)
 ```
 
 **创建 TriggerTemplate 对象**
@@ -371,7 +371,64 @@ NAME                       STARTED          DURATION     STATUS
 trigger-run-ck8f9          2 minutes ago    32 seconds   Succeeded
 ```
 
+### 配置拦截器
 
+**创建一个 token**
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-token
+  namespace: default
+type: Opaque
+stringData:
+  secretToken: "123456"
+```
+
+**在 ServiceAccount 中加入 token**
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gitsa
+  namespace: default
+secrets:
+  - name: github-auth
+  - name: aliyun-registry
+  - name: github-token
+```
+
+**在 EventListener 中加入 interceptors**
+
+```yaml
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: git-listener
+spec:
+  serviceAccountName: gitsa
+  triggers:
+  - name: git-trigger1
+    interceptors:
+      - name: "github"
+        ref:
+          name: "github"
+        params:
+          - name: "secretRef"
+            value:
+              secretName: github-token	# 关联secret名称
+              secretKey: secretToken	# 关联secretkey
+    bindings:
+    - ref: git-binding
+    template:
+      ref: git-template
+```
+
+**配置 github webhook**
+
+![image-20230401233133416](https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202304012331154.png)
 
 ## API 调用
 
