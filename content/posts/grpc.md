@@ -46,7 +46,7 @@ openssl genpkey -algorithm RSA -out server.key
 
 ```bash
 openssl req -new -nodes -key server.key -out server.csr -days 3650 \
-  -subj "/C=cn/OU=virtuallain/O=virtuallain/CN=grpc.jtthink.com" \
+  -subj "/C=cn/OU=virtuallain/O=virtuallain/CN=grpc.virtuallain.com" \
   -config ./openssl.cnf -extensions v3_req
   
 # 查看

@@ -9,9 +9,11 @@ Categories: [kubernetes]
 
 ## 部署
 
+### Pipeline
+
 可以通过 GitHub 仓库  [tektoncd/pipeline](https://github.com/tektoncd/pipeline) 中的 release.yaml 文件进行安装
 
-由于官方使用的镜像是 gcr 的镜像，所以正常情况下我们是获取不到的，需要替换镜像地址，参考：[示例 yamls](/tekton/tekton-deploy.yaml)
+由于官方使用的镜像是 gcr 的镜像，所以正常情况下我们是获取不到的，需要替换镜像地址，参考：[示例 yaml](/tekton/tekton-deploy.yaml)
 
 ```yaml
 # image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/controller:v0.27.3@sha256:364e0fde644f39a8e2c622d545bc792831270e2fb2076a97363b5cc38446138c
@@ -20,6 +22,16 @@ image: tektondev/pipeline-controller:v0.27.3
 # image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/webhook:v0.27.3@sha256:54cb380aaa4f611eef996d982fd6052a793b54cd6092b12a46bb8afd16124aca
 image:  tektondev/pipeline-webhook:v0.27.3
 ```
+
+### Trigger
+
+可以通过 GitHub 仓库 [tektoncd/triggers](https://github.com/tektoncd/triggers/) 中的 release.yaml 和 interceptors.yaml 安装
+
+同样需要替换镜像地址，参考：[示例 release.yaml](/tekton/trigger.yaml) 和 [示例 interceptors.yaml](/tekton/trigger-interceptor.yaml)
+
+### 安装客户端工具 tkn
+
+从 GitHub 仓库 [tektoncd/cli](https://github.com/tektoncd/cli) 下载
 
 
 
@@ -216,6 +228,147 @@ spec:
         name: test-image	# 关联阿里云镜像仓库PipelineResource名称
   pipelineRef:
     name: git-pipeline
+```
+
+
+
+## 使用 Trigger 自动触发流水线
+
+Trigger 可以实现通过外部事件来触发对应的任务，比如有代码提交时触发自动构建以及部署任务。它可以从各种来源的事件中检测并提取需要信息，然后根据这些信息来创建 TaskRun 和 PipelineRun，还可以将提取出来的信息传递给它们以满足不同的运行要求
+
+gitlab、github 的 webhook 就是一种最常用的外部事件，通过 Trigger 组件就监听这部分事件从而实现在提交代码后自动运行某些任务
+
+### 核心模块
+
+- **EventListener**：事件监听器，是外部事件的入口 ，通常需要通过 HTTP 方式暴露，以便于外部事件推送，比如配置 Gitlab 的Webhook
+- **Trigger**：指定当 EventListener 检测到事件发生时会发生什么，它会定义 TriggerBinding、TriggerTemplate 以及可选的 Interceptor
+- **TriggerTemplate**：用于模板化资源，根据传入的参数实例化 Tekton 对象资源，比如 TaskRun、PipelineRun 等
+- **TriggerBinding**：用于捕获事件中的字段并将其存储为参数，然后会将参数传递给 TriggerTemplate
+- **ClusterTriggerBinding**：和 TriggerBinding 相似，用于提取事件字段，不过它是集群级别的对象
+- **Interceptors**：拦截器，在 TriggerBinding 之前运行，用于负载过滤、验证、转换等处理，只有通过拦截器的数据才会传递给TriggerBinding
+
+### 示例
+
+**创建 RBAC**
+
+参考：[triggers/eventlisteners.md](https://github.com/tektoncd/triggers/blob/main/docs/eventlisteners.md)
+
+```yaml
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: triggers-role
+rules:
+  - apiGroups: ["triggers.tekton.dev"]
+    resources: ["eventlisteners","triggers", "triggerbindings", "triggertemplates","clustertriggerbindings","clusterinterceptors"]
+    verbs: ["get","list","watch","create"]
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets", "serviceaccounts"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["tekton.dev"]
+    resources: ["pipelineruns", "pipelineresources", "taskruns","task"]
+    verbs: ["create","get","list","watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: gitsa-triggers
+subjects:
+  - kind: ServiceAccount
+    namespace: default
+    name: gitsa
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: triggers-role
+```
+
+**创建 binding 对象**
+
+参考：[triggers/triggerbindings.md](https://github.com/tektoncd/triggers/blob/main/docs/triggerbindings.md#structure-of-a-triggerbinding)
+
+```yaml
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: git-binding
+spec:
+  params:
+    - name: gitrevision
+      value: master
+    - name: gitrepositoryurl
+      value: $(body.repository.url)
+```
+
+**创建 TriggerTemplate 对象**
+
+```yaml
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: git-template
+spec:
+  # 和binding里的name对应，下面需要引用
+  params:
+    - name: gitrevision
+    - name: gitrepositoryurl
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: TaskRun  # 定义 TaskRun 模板
+      metadata:
+        generateName: trigger-run-  # 前缀
+      spec:
+        serviceAccountName: gitsa
+        taskSpec:
+          resources:
+            inputs:
+              - name: source
+                type: git
+          steps:
+            - name: ls
+              image: alpine:3.12
+              script: |
+                #! /bin/sh
+                ls /workspace/source
+        resources:
+          inputs:
+          - name: source
+            resourceSpec:
+              type: git
+              params:
+                - name: revision
+                  value: $(tt.params.gitrevision)
+                - name: url
+                  value: $(tt.params.gitrepositoryurl)
+```
+
+**创建 EventListener 对象**
+
+```yaml
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: git-listener
+spec:
+  serviceAccountName: gitsa
+  triggers:
+  - name: git-trigger1
+    bindings:
+    - ref: git-binding
+    template:
+      ref: git-template
+```
+
+**调用接口触发事件**
+
+正常情况下一般是通过 ingerss 暴露 EventListener 服务，配置到 gitlab、github 仓库中作为 webhook，不过手动调用也可以触发
+
+```bash
+curl http://xxx.com -d '{"repository":{"url":"git@github.com:xxx/xxx.git"}}'
+
+tkn taskrun list
+NAME                       STARTED          DURATION     STATUS
+trigger-run-ck8f9          2 minutes ago    32 seconds   Succeeded
 ```
 
 
