@@ -169,7 +169,7 @@ metadata:
 spec:
   resources:
     inputs:
-      - name: test
+      - name: source
         type: git
     outputs:
       - name: myimage
@@ -183,8 +183,8 @@ spec:
       command:
         - /kaniko/executor
       args:
-        - --dockerfile=/workspace/flow/Dockerfile
-        - --context=/workspace/flow
+        - --dockerfile=/workspace/source/Dockerfile
+        - --context=/workspace/source
         - --destination=$(resources.outputs.myimage.url)
 ```
 
@@ -263,8 +263,11 @@ rules:
     resources: ["eventlisteners","triggers", "triggerbindings", "triggertemplates","clustertriggerbindings","clusterinterceptors"]
     verbs: ["get","list","watch","create"]
   - apiGroups: [""]
-    resources: ["configmaps", "secrets", "serviceaccounts"]
-    verbs: ["get", "list", "watch"]
+    resources: ["configmaps", "secrets", "serviceaccounts","services","pods"]
+    verbs: ["get", "list", "watch" ,"create"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch" ,"create"]
   - apiGroups: ["tekton.dev"]
     resources: ["pipelineruns", "pipelineresources", "taskruns","task"]
     verbs: ["create","get","list","watch"]
@@ -324,12 +327,28 @@ spec:
             inputs:
               - name: source
                 type: git
+            outputs:
+              - name: myimage
+                type: image
           steps:
-            - name: ls
-              image: alpine:3.12
-              script: |
-                #! /bin/sh
-                ls /workspace/source
+            - name: build-push	# 打包推送镜像
+              image: aiotceo/kaniko-executor:v1.6.0
+              env:
+                - name: "DOCKER_CONFIG"
+                  value: "/tekton/home/.docker/"
+              command:
+                - /kaniko/executor
+              args:
+                - --dockerfile=/workspace/source/Dockerfile
+                - --context=/workspace/source
+                - --destination=$(resources.outputs.myimage.url)
+            - name: build-apply	# apply k8s yaml
+              image: lachlanevenson/k8s-kubectl
+              command: ["kubectl"]
+              args:
+                - "apply"
+                - "-f"
+                - "/workspace/source/deploy.yaml"
         resources:
           inputs:
           - name: source
@@ -340,6 +359,13 @@ spec:
                   value: $(tt.params.gitrevision)
                 - name: url
                   value: $(tt.params.gitrepositoryurl)
+          outputs:
+          - name: myimage
+            resourceSpec:
+              type: image
+              params:
+                - name: url
+                  value: registry.cn-hangzhou.aliyuncs.com/xxx/xxx:v1
 ```
 
 **创建 EventListener 对象**
@@ -364,7 +390,7 @@ spec:
 正常情况下一般是通过 ingerss 暴露 EventListener 服务，配置到 gitlab、github 仓库中作为 webhook，不过手动调用也可以触发
 
 ```bash
-curl http://xxx.com -d '{"repository":{"url":"git@github.com:xxx/xxx.git"}}'
+curl -X POST http://xxx.com -d '{"repository":{"ssh_url":"git@github.com:xxx/xxx.git"}}'
 
 tkn taskrun list
 NAME                       STARTED          DURATION     STATUS
@@ -429,6 +455,167 @@ spec:
 **配置 github webhook**
 
 ![image-20230401233133416](https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202304012331154.png)
+
+### 自定义拦截器
+
+除了 tekton 内置的一些过滤器（gitlab、github 等），也可以自定义，参考：[Tekton 文档](https://tekton.dev/vault/triggers-main/clusterinterceptors/)
+
+**实现拦截器逻辑**
+
+```go
+package main
+
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"google.golang.org/grpc/codes"
+	"log"
+)
+
+func main() {
+	r := gin.New()
+
+	r.POST("/", func(context *gin.Context) {
+		log.Println("post coming")
+		req := &v1alpha1.InterceptorRequest{}
+		rsp := &v1alpha1.InterceptorResponse{}
+
+		if err := context.ShouldBindJSON(req); err == nil {
+			if token, ok := req.Header["X-My-Token"]; ok && len(token) > 0 && token[0] == "123456" {
+				rsp.Status.Code = codes.OK
+				rsp.Continue = true
+				context.JSON(200, rsp)
+				log.Println("validate success")
+				return
+			} else {
+				log.Println(req.Header)
+			}
+		} else {
+			log.Println(err)
+		}
+		rsp.Status.Code = codes.Unavailable
+		rsp.Status.Message = "error param"
+		log.Println(503)
+		context.JSON(503, rsp)
+	})
+
+	r.Run(":80")
+}
+```
+
+**创建 ClusterInterceptor 对象**
+
+```yaml
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterInterceptor
+metadata:
+  name: myinterceptor
+spec:
+  clientConfig:
+    url: "http://tekton-myinterceptor.default.svc/"
+```
+
+**修改 EventListener 的 interceptors**
+
+```yaml
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: git-listener
+spec:
+  serviceAccountName: gitsa
+  triggers:
+  - name: git-trigger1
+    interceptors:
+      - name: "myinterceptor"
+        ref:
+          name: "myinterceptor"	# 关联ClusterInterceptor
+    bindings:
+    - ref: git-binding
+    template:
+      ref: git-template
+```
+
+**调用接口触发测试**
+
+```bash
+curl -X POST -H "X-My-Token:123456" http://xxx.com -d '{"repository":{"ssh_url":"git@github.com:xxx/xxx.git"}}'
+```
+
+### git 服务签名请求
+
+gitee 参考 [WebHook 密钥验证和验证算法](https://gitee.com/help/articles/4290#article-header0)，github 参考 [保护 Webhook](https://docs.github.com/zh/webhooks-and-events/webhooks/securing-your-webhooks)
+
+gitee 编写签名密钥拦截器示例：
+
+```go
+package main
+
+import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
+	"fmt"
+	"github.com/gin-gonic/gin"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"google.golang.org/grpc/codes"
+	"log"
+	"strconv"
+)
+
+func main() {
+	r := gin.New()
+
+	r.POST("/", func(context *gin.Context) {
+		log.Println("post coming")
+		req := &v1alpha1.InterceptorRequest{}
+		rsp := &v1alpha1.InterceptorResponse{}
+
+		if err := context.ShouldBindJSON(req); err == nil {
+			if token, ok := req.Header["X-Gitee-Token"]; ok && len(token) > 0 {
+				timestampStr := req.Header["X-Gitee-Timestamp"][0]
+				timestamp, _ := strconv.Atoi(timestampStr)
+				signBase64 := GenGiteaToken(int64(timestamp))
+				if signBase64 == token[0] {
+					rsp.Status.Code = codes.OK
+					rsp.Continue = true
+					context.JSON(200, rsp)
+					log.Println("gitea validate success")
+					return
+				}
+			} else {
+				log.Println(req.Header)
+			}
+		} else {
+			log.Println(err)
+		}
+		rsp.Status.Code = codes.Unavailable
+		rsp.Status.Message = "error param"
+		log.Println(503)
+		context.JSON(503, rsp)
+	})
+
+	r.Run(":80")
+}
+
+func HmacSha256(message string, secret string) string {
+	key := []byte(secret)
+	h := hmac.New(sha256.New, key)
+	h.Write([]byte(message))
+
+	return base64.StdEncoding.EncodeToString(h.Sum(nil))
+}
+
+// 生成gitee的秘钥
+func GenGiteaToken(timestamp int64) string {
+	secret := "123456"
+	stringToSign := fmt.Sprintf("%d\n%s", timestamp, secret)
+	stringToSign = HmacSha256(stringToSign, secret)
+	return base64.StdEncoding.EncodeToString([]byte(stringToSign))
+}
+```
+
+
 
 ## API 调用
 
