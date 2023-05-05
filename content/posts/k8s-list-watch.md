@@ -26,8 +26,6 @@ list-watch 由两部分组成，分别是 list 和 watch。list 非常好理解�
 
 etcd 存储集群的数据信息，apiserver 作为统一入口，任何对数据的操作都必须经过 apiserver。客户端通过 list-watch 监听 apiserver 中资源的 create, update 和 delete 事件，并针对事件类型调用相应的事件处理函数
 
-![img](https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202212181854816.jpeg)
-
 
 
 ## informer 机制
@@ -35,6 +33,30 @@ etcd 存储集群的数据信息，apiserver 作为统一入口，任何对数�
 k8s 的 informer 模块封装 list-watch API，用户只需要指定资源，编写事件处理函数，AddFunc, UpdateFunc 和 DeleteFunc 等。如下图所示，informer 首先通过 list API 罗列资源，然后调用 watch API 监听资源的变更事件，并将结果放入到一个 FIFO 队列，队列的另一头有协程从中取出事件，并调用对应的注册函数处理事件。Informer 还维护了一个只读的 Map Store 缓存，主要为了提升查询的效率，降低 apiserver 的负载
 
 ![informer实现原理](https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202212181902721.png)
+
+### Informer 机制的完整架构图
+
+![img](https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202212181854816.jpeg)
+
+Reflector 从 API Server 中通过 List&Watch 得到资源的状态变化，把数据塞到 Delta Fifo 队列里（Reflector 相当于生产者），由 Informer 进行消费。更新时在回调里可以获得新值和旧值，旧值从 Indexer（store） 中获取
+
+- FIFO ：先入先出队列，拥有队列基本方法（ADD，UPDATE，DELETE，LIST，POP，CLOSE 等）
+- Delta ： 存储对象的行为（变化）类型（Added，Updated，Deleted，Sync 等）
+
+如果要对一个资源支持多种监听方式，需要使用到 **SharedInformer**（SharedIndexInformer）
+
+- 支持多个EventHandler .  可以认为是支持多个消费者，多个消费者之间共享 Indexer， Reflector 统一下发数据统一处理
+- 内置一个 Indexer（有一个叫做 threadSafeMap 的 struct 来实现 cache/thread_safe_store.go）
+
+里面有个属性 sharedProcessor，用于协调和管理若干个处理器对象 processorListener（这是真正干活的对象）
+
+- run()：阻塞运行
+- pop()：好比不断从队列里取数据，完成对应的回调操作
+- addCh：一个 channel，外部向它插入数据
+
+好比 Reflector 向 deltaFifo 插入数据后，后分发给 ProcessListener，由 ProcessListener 执行具体的回调。Processor 里面可以放若干个 Listener，因此可以使用多个回调
+
+如果要对多个资源支持多种监听方式，需要使用到 **SharedInformerFactory**，里面有个属性 informers 包含多个 SharedIndexInformer 对象
 
 
 
@@ -394,4 +416,3 @@ func GetPodsByLabels(ns string, labels []map[string]string) (pods []*model.PodMo
 	return
 }
 ```
-
