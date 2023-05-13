@@ -50,6 +50,12 @@
 
 
 
+### Linux
+
+- May 13, 2023 [Linux Namespace 机制](https://xuliangtang.github.io/posts/linux_ns/)
+
+
+
 ## 其他链接
 
 - [cnblogs](https://www.cnblogs.com/tangxuliang)
