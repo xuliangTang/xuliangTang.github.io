@@ -53,6 +53,7 @@
 ### Linux
 
 - May 13, 2023 [Linux Namespace 机制](https://xuliangtang.github.io/posts/linux_ns/)
+- May 14, 2023 [Linux 资源管理之 cgroup](https://xuliangtang.github.io/posts/linux_cgroup/)
 
 
 
