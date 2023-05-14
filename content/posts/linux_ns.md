@@ -5,14 +5,16 @@ draft: false
 Categories: [Linux]
 ---
 
-Linux Namespace 提供了一种内核级别隔离系统资源的方法，通过将系统的全局资源放在不同的 Namespace 中，来实现资源隔离的目的。不同 Namespace 的程序，可以享有一份独立的系统资源。目前Linux中提供了六类系统资源的隔离机制，分别是：
+Linux Namespace 提供了一种内核级别隔离系统资源的方法，通过将系统的全局资源放在不同的 Namespace 中，来实现资源隔离的目的。不同 Namespace 的程序，可以享有一份独立的系统资源。目前Linux中提供了六类系统资源的隔离机制
 
-- `Mount`: 隔离文件系统挂载点
-- `UTS`: 隔离主机名和域名信息
-- `IPC`: 隔离进程间通信
-- `PID`: 隔离进程的ID
-- `Network`: 隔离网络资源
-- `User`: 隔离用户和用户组的ID
+| 分类                       | 对应的宏定义  | 相关内核版本                                                 |
+| -------------------------- | ------------- | ------------------------------------------------------------ |
+| Mount：隔离文件系统挂载点  | CLONE_NEWNS   | [Linux 2.4.19](http://lwn.net/2001/0301/a/namespaces.php3)   |
+| UTS: 隔离主机名和域名信息  | CLONE_NEWNS   | [ Linux 2.6.19](http://lwn.net/Articles/179345/)             |
+| IPC: 隔离进程间通信        | CLONE_NEWIPC  | [Linux 2.6.19](http://lwn.net/Articles/187274/)              |
+| PID: 隔离进程的ID          | CLONE_NEWPID  | [Linux 2.6.24](http://lwn.net/Articles/259217/)              |
+| Network: 隔离网络资源      | CLONE_NEWNET  | [始于Linux 2.6.24 完成于 Linux 2.6.29](http://lwn.net/Articles/219794/) |
+| User: 隔离用户和用户组的ID | CLONE_NEWUSER | [始于 Linux 2.6.23 完成于 Linux 3.8](http://lwn.net/Articles/528078/) |
 
 namespace 的主要作用：封装抽象，限制，隔离，使命名空间内的进程看起来拥有他们自己的全局资源
 
@@ -229,6 +231,136 @@ uid=65534 gid=65534 groups=65534
 ```bash
 /home/txl # id
 uid=0(root) gid=0(root) groups=0(root),65534
+```
+
+
+
+## PID Namespace
+
+ PID namespace 主要是用于隔离进程号。即，在不同的 PID namespace 中可以包含相同的进程号，每个 PID namespace 中的第一个进程“PID 1“，都会像 init 进程一样拥有特权
+
+PID namespace 中的 1 号进程是所有孤立进程的父进程，如果这个进程被终止，内核将调用 `SIGKILL` 发出终止此 namespace 中的所有进程的信号，这部分内容与 Kubernetes 中应用的优雅关闭/平滑升级等都有一定的联系。从 Linux v3.4 内核版本开始，如果在一个 PID namespace 中发生 `reboot()` 的系统调用，则 PID namespace 中的 init 进程会立即退出。这算是一个比较特殊的技巧，可用于处理高负载机器上容器退出的问题
+
+```bash
+[root@lain1 ~]# unshare --fork --pid --mount /home/txl/alpine/bin/busybox sh
+~ # mount -t proc proc /proc
+~ # ps
+  PID TTY          TIME CMD
+    1 pts/0    00:00:00 busybox
+    4 pts/0    00:00:00 ps
+```
+
+
+
+## Go 实现 Namespace 隔离
+
+从 docker 克隆镜像文件到本地
+
+```bash
+[root@lain1 ~]# docker run -d alpine:3.12 top -b
+[root@lain1 ~]# docker export -o alpine.tar <container id>
+[root@lain1 ~]# mkdir alpine && tar xf alpine.tar -C ./alpine
+```
+
+根命令定义
+
+```go
+var rootCmd = &cobra.Command{
+	Use:   "linux-namespace",
+	Short: "",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("linux namespace dev")
+	},
+}
+
+func Execute() {
+	err := rootCmd.Execute()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func init() {
+	rootCmd.AddCommand(runCommand, execCommand)
+}
+```
+
+`run` 参数定义
+
+```go
+const self = "/proc/self/exe" //在Linux中代表当前执行的程序
+const alpine = "/home/txl/alpine"
+
+var runCommand = &cobra.Command{
+	Use: "run",
+	Run: func(cmd *cobra.Command, args []string) {
+		runCmd := exec.Command(self, "exec", "/bin/busybox", "sh")	// 产生一个新进程调用自身的exec参数
+        // 主机名隔离 用户隔离 挂载隔离 进程隔离
+		runCmd.SysProcAttr = &syscall.SysProcAttr{
+			Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWUSER | syscall.CLONE_NEWNS | syscall.CLONE_NEWPID,
+			UidMappings: []syscall.SysProcIDMap{	// 设置uid_map
+				{
+					ContainerID: 0,
+					HostID:      os.Getuid(),
+					Size:        1,
+				},
+			},
+			GidMappings: []syscall.SysProcIDMap{	// 设置gid_map
+				{
+					ContainerID: 0,
+					HostID:      os.Getgid(),
+					Size:        1,
+				},
+			},
+		}
+		runCmd.Stdin = os.Stdin
+		runCmd.Stdout = os.Stdout
+		runCmd.Stderr = os.Stderr
+		if err := runCmd.Start(); err != nil {
+			log.Fatalln(err)
+		}
+		runCmd.Wait()
+	},
+}
+```
+
+`exec` 参数定义
+
+```go
+const env = "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:mytest"
+var execCommand = &cobra.Command{
+	Use: "exec",
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) == 0 {
+			log.Fatalln("error args")
+		}
+		var runArgs []string
+		if len(args) > 1 {
+			runArgs = args[1:]	// sh
+		}
+        
+        if err := syscall.Chroot(alpine); err != nil {	// 设置在指定的根目录下运行
+			log.Fatalln(err)
+		}
+		if err := os.Chdir("/"); err != nil {	// 替换当前的工作目录
+			log.Fatalln(err)
+		}
+        if err := syscall.Mount("proc", "/proc", "proc", 0, ""); err != nil {	// 挂载proc
+			log.Fatalln(err)
+		}
+        
+		runCmd := exec.Command(args[0], runArgs...)	// /bin/busybox sh
+		runCmd.Stdin = os.Stdin
+		runCmd.Stdout = os.Stdout
+		runCmd.Stderr = os.Stderr
+        runCmd.Env = []string{env}	// 设置容器环境变量
+		if err := runCmd.Start(); err != nil {
+			log.Fatalln(err)
+		}
+		runCmd.Wait()
+	},
+}
 ```
 
 
