@@ -1,0 +1,298 @@
+<!doctype html><html lang=zh-cn><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=robots content="noodp"><title>runC 与容器运行时 - Lain Blog</title><meta name=Description content="This is my cool site"><meta property="og:title" content="runC 与容器运行时"><meta property="og:description" content="RunC 是用来运行容器的一个轻量级工具。被称为运行容器的运行时，它负责利用符合标准的文件 OCI（Open Container Initiative）标准等资源运行容器"><meta property="og:type" content="article"><meta property="og:url" content="http://xuliangtang.github.io/posts/runc/"><meta property="article:section" content="posts"><meta property="article:published_time" content="2023-05-27T00:00:00+00:00"><meta property="article:modified_time" content="2023-05-27T20:27:28+08:00"><meta property="og:site_name" content="My cool site"><meta name=twitter:card content="summary"><meta name=twitter:title content="runC 与容器运行时"><meta name=twitter:description content="RunC 是用来运行容器的一个轻量级工具。被称为运行容器的运行时，它负责利用符合标准的文件 OCI（Open Container Initiative）标准等资源运行容器"><meta name=application-name content="Lain Blog"><meta name=apple-mobile-web-app-title content="Lain Blog"><meta name=theme-color content="#ffffff"><meta name=msapplication-TileColor content="#da532c"><link rel="shortcut icon" type=image/x-icon href=/favicons/favicon.ico><link rel=icon type=image/png sizes=32x32 href=/favicons/favicon-32x32.png><link rel=icon type=image/png sizes=16x16 href=/favicons/favicon-16x16.png><link rel=apple-touch-icon sizes=180x180 href=/favicons/apple-touch-icon.png><link rel=mask-icon href=/safari-pinned-tab.svg color=#5bbad5><link rel=manifest href=/site.webmanifest><link rel=canonical href=http://xuliangtang.github.io/posts/runc/><link rel=prev href=http://xuliangtang.github.io/posts/linux_cgroup/><link rel=stylesheet href=/css/style.min.css><link rel=preload href=https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.1.1/css/all.min.css as=style onload='this.onload=null,this.rel="stylesheet"'><noscript><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.1.1/css/all.min.css></noscript><link rel=preload href=https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css as=style onload='this.onload=null,this.rel="stylesheet"'><noscript><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css></noscript><script type=application/ld+json>{"@context":"http://schema.org","@type":"BlogPosting","headline":"runC 与容器运行时","inLanguage":"zh-CN","mainEntityOfPage":{"@type":"WebPage","@id":"http:\/\/xuliangtang.github.io\/posts\/runc\/"},"genre":"posts","wordcount":3098,"url":"http:\/\/xuliangtang.github.io\/posts\/runc\/","datePublished":"2023-05-27T00:00:00+00:00","dateModified":"2023-05-27T20:27:28+08:00","publisher":{"@type":"Organization","name":""},"author":{"@type":"Person","name":"xuliangTang"},"description":""}</script></head><body data-header-desktop=fixed data-header-mobile=auto><script type=text/javascript>(window.localStorage&&localStorage.getItem("theme")?localStorage.getItem("theme")==="dark":"auto"==="auto"?window.matchMedia("(prefers-color-scheme: dark)").matches:"auto"==="dark")&&document.body.setAttribute("theme","dark")</script><div id=mask></div><div class=wrapper><header class=desktop id=header-desktop><div class=header-wrapper><div class=header-title><a href=/ title="Lain Blog">Dev Lain</a></div><div class=menu><div class=menu-inner><a class=menu-item href=/posts/>文章 </a><a class=menu-item href=/tags/>标签 </a><a class=menu-item href=/categories/>分类 </a><span class="menu-item delimiter"></span><span class="menu-item search" id=search-desktop>
+<input type=text placeholder="Search titles or contents..." id=search-input-desktop>
+<a href=javascript:void(0); class="search-button search-toggle" id=search-toggle-desktop title=Search><i class="fas fa-search fa-fw" aria-hidden=true></i></a>
+<a href=javascript:void(0); class="search-button search-clear" id=search-clear-desktop title=Clear><i class="fas fa-times-circle fa-fw" aria-hidden=true></i></a>
+<span class="search-button search-loading" id=search-loading-desktop><i class="fas fa-spinner fa-fw fa-spin" aria-hidden=true></i></span>
+</span><a href=javascript:void(0); class="menu-item theme-switch" title="Switch Theme"><i class="fas fa-adjust fa-fw" aria-hidden=true></i></a></div></div></div></header><header class=mobile id=header-mobile><div class=header-container><div class=header-wrapper><div class=header-title><a href=/ title="Lain Blog">Dev Lain</a></div><div class=menu-toggle id=menu-toggle-mobile><span></span><span></span><span></span></div></div><div class=menu id=menu-mobile><div class=search-wrapper><div class="search mobile" id=search-mobile><input type=text placeholder="Search titles or contents..." id=search-input-mobile>
+<a href=javascript:void(0); class="search-button search-toggle" id=search-toggle-mobile title=Search><i class="fas fa-search fa-fw" aria-hidden=true></i></a>
+<a href=javascript:void(0); class="search-button search-clear" id=search-clear-mobile title=Clear><i class="fas fa-times-circle fa-fw" aria-hidden=true></i></a>
+<span class="search-button search-loading" id=search-loading-mobile><i class="fas fa-spinner fa-fw fa-spin" aria-hidden=true></i></span></div><a href=javascript:void(0); class=search-cancel id=search-cancel-mobile>Cancel</a></div><a class=menu-item href=/posts/ title>文章</a><a class=menu-item href=/tags/ title>标签</a><a class=menu-item href=/categories/ title>分类</a><a href=javascript:void(0); class="menu-item theme-switch" title="Switch Theme">
+<i class="fas fa-adjust fa-fw" aria-hidden=true></i></a></div></div></header><div class="search-dropdown desktop"><div id=search-dropdown-desktop></div></div><div class="search-dropdown mobile"><div id=search-dropdown-mobile></div></div><main class=main><div class=container><div class=toc id=toc-auto><h2 class=toc-title>Contents</h2><div class="toc-content always-active" id=toc-content-auto></div></div><article class="page single"><h1 class="single-title animate__animated animate__flipInX">runC 与容器运行时</h1><div class=post-meta><div class=post-meta-line><span class=post-author><a href=/ title=Author rel=author class=author><i class="fas fa-user-circle fa-fw" aria-hidden=true></i>xuliangTang</a></span>&nbsp;<span class=post-category>included in <a href=/categories/kubernetes/><i class="far fa-folder fa-fw" aria-hidden=true></i>kubernetes</a></span></div><div class=post-meta-line><i class="far fa-calendar-alt fa-fw" aria-hidden=true></i>&nbsp;<time datetime=2023-05-27>2023-05-27</time>&nbsp;<i class="fas fa-pencil-alt fa-fw" aria-hidden=true></i>&nbsp;3098 words&nbsp;
+<i class="far fa-clock fa-fw" aria-hidden=true></i>&nbsp;7 minutes&nbsp;</div></div><div class="details toc" id=toc-static data-kept><div class="details-summary toc-title"><span>Contents</span>
+<span><i class="details-icon fas fa-angle-right" aria-hidden=true></i></span></div><div class="details-content toc-content" id=toc-content-static><nav id=TableOfContents><ul><li><a href=#docker>Docker</a></li><li><a href=#cri>CRI</a></li><li><a href=#实验>实验</a><ul><li><a href=#运行容器>运行容器</a></li><li><a href=#给容器配置网络>给容器配置网络</a></li><li><a href=#映射端口外网访问>映射端口外网访问</a></li><li><a href=#运行-pause-容器>运行 pause 容器</a></li><li><a href=#多容器网络共享>多容器网络共享</a></li></ul></li></ul></nav></div></div><div class=content id=content><p><a href=https://github.com/opencontainers/runc target=_blank rel="noopener noreffer">RunC</a> 是用来运行容器的一个轻量级工具。被称为运行容器的运行时，它负责利用符合标准的文件 OCI（Open Container Initiative）标准等资源运行容器：</p><ul><li><a href=https://github.com/opencontainers/runtime-spec/blob/main/spec.md target=_blank rel="noopener noreffer">Open Container Initiative Runtime Specification</a>：指定容器的配置、执行环境和生命周期</li><li><a href=https://github.com/opencontainers/image-spec/blob/main/spec.md target=_blank rel="noopener noreffer">Open Container Initiative Image Specification</a>：定义了如何创建一个符合规范的镜像， 规定了镜像需要输出的内容和格式</li></ul><p>譬如当我们执行 <code>docker run alpine sh</code> 的时候：</p><ol><li>到了 shim 环节后，shim 启动 runc</li><li>runC 负责找到 alpine 这个镜像文件中的 sh 程序并运行</li><li>交给它的父进程 shim 接管 sh 这个进程</li></ol><h2 id=docker>Docker</h2><p>从 Docker 1.11 版本开始，Docker 容器运行就不是简单通过 Docker Daemon 来启动了，而是通过集成 containerd、runc 等多个组件来完成的。虽然 Docker Daemon 守护进程模块在不停的重构，但是基本功能和定位没有太大的变化，一直都是 CS 架构，守护进程负责和 Docker Client 端交互，并管理 Docker 镜像和容器。现在的架构中组件 containerd 就会负责集群节点上容器的生命周期管理，并向上为 Docker Daemon 提供 gRPC 接口</p><p><img class=lazyload src=/svg/loading.min.svg data-src=https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202305271831011.png data-srcset="https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202305271831011.png, https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202305271831011.png 1.5x, https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202305271831011.png 2x" data-sizes=auto alt=https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202305271831011.png title="docker 架构"></p><p>当我们要创建一个容器的时候，现在 Docker Daemon 并不能直接帮我们创建了，而是请求 containerd 来创建一个容器，containerd 收到请求后，也并不会直接去操作容器，而是创建一个叫做 containerd-shim 的进程，让这个进程去操作容器，我们指定容器进程是需要一个父进程来做状态收集、维持 stdin 等 fd 打开等工作的，假如这个父进程就是 containerd，那如果 containerd 挂掉的话，整个宿主机上所有的容器都得退出了，而引入 containerd-shim 这个垫片就可以来规避这个问题了</p><p>然后创建容器需要做一些 namespaces 和 cgroups 的配置，以及挂载 root 文件系统等操作，这些操作其实已经有了标准的规范，那就是 OCI（开放容器标准），runc 就是它的一个参考实现（Docker 被逼无耐将 libcontainer 捐献出来改名为 runc 的），这个标准其实就是一个文档，主要规定了容器镜像的结构、以及容器需要接收哪些操作指令，比如 create、start、stop、delete 等这些命令。runc 就可以按照这个 OCI 文档来创建一个符合规范的容器，既然是标准肯定就有其他 OCI 实现，比如 Kata、gVisor 这些容器运行时都是符合 OCI 标准的</p><p>所以真正启动容器是通过 containerd-shim 去调用 runc 来启动容器的，runc 启动完容器后本身会直接退出，containerd-shim 则会成为容器进程的父进程，负责收集容器进程的状态，上报给 containerd，并在容器中 pid 为 1 的进程退出后接管容器中的子进程进行清理，确保不会出现僵尸进程</p><p>而 Docker 将容器操作都迁移到 containerd 中去是因为当前做 Swarm，想要进军 PaaS 市场，做了这个架构切分，让 Docker Daemon 专门去负责上层的封装编排，当然后面的结果我们知道 Swarm 在 Kubernetes 面前是惨败，然后 Docker 公司就把 containerd 项目捐献给了 CNCF 基金会，这个也是现在的 Docker 架构</p><h2 id=cri>CRI</h2><p>我们知道 Kubernetes 提供了一个 CRI 的容器运行时接口，那么这个 CRI 到底是什么呢？这个其实也和 Docker 的发展密切相关的</p><p>在 Kubernetes 早期的时候，当时 Docker 实在是太火了，Kubernetes 当然会先选择支持 Docker，而且是通过硬编码的方式直接调用 Docker API，后面随着 Docker 的不断发展以及 Google 的主导，出现了更多容器运行时，Kubernetes 为了支持更多更精简的容器运行时，Google 就和红帽主导推出了 CRI 标准，用于将 Kubernetes 平台和特定的容器运行时（当然主要是为了干掉 Docker）解耦</p><p>CRI（Container Runtime Interface 容器运行时接口）本质上就是 Kubernetes 定义的一组与容器运行时进行交互的接口，所以只要实现了这套接口的容器运行时都可以对接到 Kubernetes 平台上来。不过 Kubernetes 推出 CRI 这套标准的时候还没有现在的统治地位，所以有一些容器运行时可能不会自身就去实现 CRI 接口，于是就有了 shim（垫片）， 一个 shim 的职责就是作为适配器将各种容器运行时本身的接口适配到 Kubernetes 的 CRI 接口上，其中 dockershim 就是 Kubernetes 对接 Docker 到 CRI 接口上的一个垫片实现</p><p><img class=lazyload src=/svg/loading.min.svg data-src=https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202305271842091.png data-srcset="https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202305271842091.png, https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202305271842091.png 1.5x, https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202305271842091.png 2x" data-sizes=auto alt=https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202305271842091.png title=https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202305271842091.png></p><p>Kubelet 通过 gRPC 框架与容器运行时或 shim 进行通信，其中 kubelet 作为客户端，CRI shim（也可能是容器运行时本身）作为服务器</p><p>CRI 定义的 <a href=https://github.com/kubernetes/kubernetes/blob/release-1.5/pkg/kubelet/api/v1alpha1/runtime/api.proto target=_blank rel="noopener noreffer">API</a> 主要包括两个 gRPC 服务，<code>ImageService</code> 和 <code>RuntimeService</code>，<code>ImageService</code> 服务主要是拉取镜像、查看和删除镜像等操作，<code>RuntimeService</code> 则是用来管理 Pod 和容器的生命周期，以及与容器交互的调用（exec/attach/port-forward）等操作，可以通过 kubelet 中的标志 <code>--container-runtime-endpoint</code> 和 <code>--image-service-endpoint</code> 来配置这两个服务的套接字</p><p><img class=lazyload src=/svg/loading.min.svg data-src=https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202305271839126.png data-srcset="https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202305271839126.png, https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202305271839126.png 1.5x, https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202305271839126.png 2x" data-sizes=auto alt=https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202305271839126.png title="kubelet cri"></p><p>现在如果我们使用的是 Docker 的话，当我们在 Kubernetes 中创建一个 Pod 的时候，首先就是 kubelet 通过 CRI 接口调用 <code>dockershim</code>，请求创建一个容器，kubelet 可以视作一个简单的 CRI Client, 而 dockershim 就是接收请求的 Server，不过他们都是在 kubelet 内置的</p><p><code>dockershim</code> 收到请求后, 转化成 Docker Daemon 能识别的请求, 发到 Docker Daemon 上请求创建一个容器，请求到了 Docker Daemon 后续就是 Docker 创建容器的流程了，去调用 <code>containerd</code>，然后创建 <code>containerd-shim</code> 进程，通过该进程去调用 <code>runc</code> 去真正创建容器</p><p><img class=lazyload src=/svg/loading.min.svg data-src=https://bxdc-static.oss-cn-beijing.aliyuncs.com/images/20210810094948.png data-srcset="https://bxdc-static.oss-cn-beijing.aliyuncs.com/images/20210810094948.png, https://bxdc-static.oss-cn-beijing.aliyuncs.com/images/20210810094948.png 1.5x, https://bxdc-static.oss-cn-beijing.aliyuncs.com/images/20210810094948.png 2x" data-sizes=auto alt=https://bxdc-static.oss-cn-beijing.aliyuncs.com/images/20210810094948.png title=切换到containerd></p><h2 id=实验>实验</h2><p>RunC 是运行容器的运行时，它负责利用符合标准的文件等资源运行容器，但是它不包含 docker 那样的镜像管理功能。所以要用 runC 运行容器，我们先得准备好容器的文件系统。所谓的 OCI bundle 就是指容器的文件系统和一个 config.json 文件。有了容器的文件系统后我们可以通过 runc spec 命令来生成 config.json 文件。使用 docker 可轻松的生成容器的文件系统，因为 runC 本来就是 docker 贡献给社区的嘛！</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl><span class=c1># 准备 OCI bundle</span>
+</span></span><span class=line><span class=cl>docker pull alpine:3.12
+</span></span><span class=line><span class=cl>mkdir -p alpine/rootfs
+</span></span><span class=line><span class=cl>docker <span class=nb>export</span> <span class=k>$(</span>docker create alpine:3.12<span class=k>)</span> <span class=p>|</span> tar -C alpine/rootfs -xvf -
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># 生成容器配置文件</span>
+</span></span><span class=line><span class=cl>runc spec
+</span></span></code></pre></div><h3 id=运行容器>运行容器</h3><p>修改 config.json 配置，以 detach 模式运行容器</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-json data-lang=json><span class=line><span class=cl><span class=p>{</span>
+</span></span><span class=line><span class=cl>	<span class=nt>&#34;ociVersion&#34;</span><span class=p>:</span> <span class=s2>&#34;1.0.2-dev&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>	<span class=nt>&#34;process&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>		<span class=nt>&#34;terminal&#34;</span><span class=p>:</span> <span class=kc>false</span><span class=p>,</span>	<span class=c1>// 非交互式
+</span></span></span><span class=line><span class=cl><span class=c1></span>		<span class=nt>&#34;user&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;uid&#34;</span><span class=p>:</span> <span class=mi>0</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;gid&#34;</span><span class=p>:</span> <span class=mi>0</span>
+</span></span><span class=line><span class=cl>		<span class=p>},</span>
+</span></span><span class=line><span class=cl>		<span class=nt>&#34;args&#34;</span><span class=p>:</span> <span class=p>[</span>	<span class=c1>// 启动参数
+</span></span></span><span class=line><span class=cl><span class=c1></span>			<span class=s2>&#34;/app/myhttp&#34;</span>
+</span></span><span class=line><span class=cl>		<span class=p>],</span>
+</span></span><span class=line><span class=cl>		<span class=nt>&#34;env&#34;</span><span class=p>:</span> <span class=p>[</span>	<span class=c1>// 容器env
+</span></span></span><span class=line><span class=cl><span class=c1></span>			<span class=s2>&#34;PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=s2>&#34;TERM=xterm&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=s2>&#34;MYNAME=txl&#34;</span>
+</span></span><span class=line><span class=cl>		<span class=p>],</span>
+</span></span><span class=line><span class=cl>		<span class=nt>&#34;cwd&#34;</span><span class=p>:</span> <span class=s2>&#34;/&#34;</span><span class=p>,</span>	<span class=c1>// 初始目录
+</span></span></span><span class=line><span class=cl><span class=c1></span>		<span class=nt>&#34;capabilities&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;bounding&#34;</span><span class=p>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;CAP_AUDIT_WRITE&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;CAP_KILL&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;CAP_NET_BIND_SERVICE&#34;</span>
+</span></span><span class=line><span class=cl>			<span class=p>],</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;effective&#34;</span><span class=p>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;CAP_AUDIT_WRITE&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;CAP_KILL&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;CAP_NET_BIND_SERVICE&#34;</span>
+</span></span><span class=line><span class=cl>			<span class=p>],</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;permitted&#34;</span><span class=p>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;CAP_AUDIT_WRITE&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;CAP_KILL&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;CAP_NET_BIND_SERVICE&#34;</span>
+</span></span><span class=line><span class=cl>			<span class=p>],</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;ambient&#34;</span><span class=p>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;CAP_AUDIT_WRITE&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;CAP_KILL&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;CAP_NET_BIND_SERVICE&#34;</span>
+</span></span><span class=line><span class=cl>			<span class=p>]</span>
+</span></span><span class=line><span class=cl>		<span class=p>},</span>
+</span></span><span class=line><span class=cl>		<span class=nt>&#34;rlimits&#34;</span><span class=p>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>			<span class=p>{</span>
+</span></span><span class=line><span class=cl>				<span class=nt>&#34;type&#34;</span><span class=p>:</span> <span class=s2>&#34;RLIMIT_NOFILE&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=nt>&#34;hard&#34;</span><span class=p>:</span> <span class=mi>1024</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=nt>&#34;soft&#34;</span><span class=p>:</span> <span class=mi>1024</span>
+</span></span><span class=line><span class=cl>			<span class=p>}</span>
+</span></span><span class=line><span class=cl>		<span class=p>],</span>
+</span></span><span class=line><span class=cl>		<span class=nt>&#34;noNewPrivileges&#34;</span><span class=p>:</span> <span class=kc>true</span>
+</span></span><span class=line><span class=cl>	<span class=p>},</span>
+</span></span><span class=line><span class=cl>	<span class=nt>&#34;root&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>		<span class=nt>&#34;path&#34;</span><span class=p>:</span> <span class=s2>&#34;rootfs&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>		<span class=nt>&#34;readonly&#34;</span><span class=p>:</span> <span class=kc>false</span>
+</span></span><span class=line><span class=cl>	<span class=p>},</span>
+</span></span><span class=line><span class=cl>	<span class=nt>&#34;hostname&#34;</span><span class=p>:</span> <span class=s2>&#34;runc-test&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>	<span class=nt>&#34;mounts&#34;</span><span class=p>:</span> <span class=p>[</span>		<span class=c1>// 增加挂载点
+</span></span></span><span class=line><span class=cl><span class=c1></span>		<span class=p>{</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;destination&#34;</span><span class=p>:</span> <span class=s2>&#34;/app&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;type&#34;</span><span class=p>:</span> <span class=s2>&#34;bind&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;source&#34;</span><span class=p>:</span> <span class=s2>&#34;/home/txl/cri/app&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;options&#34;</span><span class=p>:</span> <span class=p>[</span><span class=s2>&#34;rbind&#34;</span><span class=p>,</span> <span class=s2>&#34;rw&#34;</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>		<span class=p>},</span>
+</span></span><span class=line><span class=cl>		<span class=p>{</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;destination&#34;</span><span class=p>:</span> <span class=s2>&#34;/proc&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;type&#34;</span><span class=p>:</span> <span class=s2>&#34;proc&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;source&#34;</span><span class=p>:</span> <span class=s2>&#34;proc&#34;</span>
+</span></span><span class=line><span class=cl>		<span class=p>},</span>
+</span></span><span class=line><span class=cl>		<span class=p>{</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;destination&#34;</span><span class=p>:</span> <span class=s2>&#34;/dev&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;type&#34;</span><span class=p>:</span> <span class=s2>&#34;tmpfs&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;source&#34;</span><span class=p>:</span> <span class=s2>&#34;tmpfs&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;options&#34;</span><span class=p>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;nosuid&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;strictatime&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;mode=755&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;size=65536k&#34;</span>
+</span></span><span class=line><span class=cl>			<span class=p>]</span>
+</span></span><span class=line><span class=cl>		<span class=p>},</span>
+</span></span><span class=line><span class=cl>		<span class=p>{</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;destination&#34;</span><span class=p>:</span> <span class=s2>&#34;/dev/pts&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;type&#34;</span><span class=p>:</span> <span class=s2>&#34;devpts&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;source&#34;</span><span class=p>:</span> <span class=s2>&#34;devpts&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;options&#34;</span><span class=p>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;nosuid&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;noexec&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;newinstance&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;ptmxmode=0666&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;mode=0620&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;gid=5&#34;</span>
+</span></span><span class=line><span class=cl>			<span class=p>]</span>
+</span></span><span class=line><span class=cl>		<span class=p>},</span>
+</span></span><span class=line><span class=cl>		<span class=p>{</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;destination&#34;</span><span class=p>:</span> <span class=s2>&#34;/dev/shm&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;type&#34;</span><span class=p>:</span> <span class=s2>&#34;tmpfs&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;source&#34;</span><span class=p>:</span> <span class=s2>&#34;shm&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;options&#34;</span><span class=p>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;nosuid&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;noexec&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;nodev&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;mode=1777&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;size=65536k&#34;</span>
+</span></span><span class=line><span class=cl>			<span class=p>]</span>
+</span></span><span class=line><span class=cl>		<span class=p>},</span>
+</span></span><span class=line><span class=cl>		<span class=p>{</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;destination&#34;</span><span class=p>:</span> <span class=s2>&#34;/dev/mqueue&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;type&#34;</span><span class=p>:</span> <span class=s2>&#34;mqueue&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;source&#34;</span><span class=p>:</span> <span class=s2>&#34;mqueue&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;options&#34;</span><span class=p>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;nosuid&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;noexec&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;nodev&#34;</span>
+</span></span><span class=line><span class=cl>			<span class=p>]</span>
+</span></span><span class=line><span class=cl>		<span class=p>},</span>
+</span></span><span class=line><span class=cl>		<span class=p>{</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;destination&#34;</span><span class=p>:</span> <span class=s2>&#34;/sys&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;type&#34;</span><span class=p>:</span> <span class=s2>&#34;sysfs&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;source&#34;</span><span class=p>:</span> <span class=s2>&#34;sysfs&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;options&#34;</span><span class=p>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;nosuid&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;noexec&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;nodev&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;ro&#34;</span>
+</span></span><span class=line><span class=cl>			<span class=p>]</span>
+</span></span><span class=line><span class=cl>		<span class=p>},</span>
+</span></span><span class=line><span class=cl>		<span class=p>{</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;destination&#34;</span><span class=p>:</span> <span class=s2>&#34;/sys/fs/cgroup&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;type&#34;</span><span class=p>:</span> <span class=s2>&#34;cgroup&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;source&#34;</span><span class=p>:</span> <span class=s2>&#34;cgroup&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;options&#34;</span><span class=p>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;nosuid&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;noexec&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;nodev&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;relatime&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=s2>&#34;ro&#34;</span>
+</span></span><span class=line><span class=cl>			<span class=p>]</span>
+</span></span><span class=line><span class=cl>		<span class=p>}</span>
+</span></span><span class=line><span class=cl>	<span class=p>],</span>
+</span></span><span class=line><span class=cl>	<span class=nt>&#34;linux&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>		<span class=nt>&#34;resources&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=nt>&#34;cpu&#34;</span><span class=p>:</span> <span class=p>{</span>	<span class=c1>// cgroup cpu资源限制
+</span></span></span><span class=line><span class=cl><span class=c1></span>				<span class=nt>&#34;quota&#34;</span><span class=p>:</span> <span class=mi>10000</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>				<span class=nt>&#34;period&#34;</span><span class=p>:</span> <span class=mi>100000</span>
+</span></span><span class=line><span class=cl>			<span class=p>},</span>
+</span></span><span class=line><span class=cl>			<span class=nt>&#34;devices&#34;</span><span class=p>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>				<span class=p>{</span>
+</span></span><span class=line><span class=cl>					<span class=nt>&#34;allow&#34;</span><span class=p>:</span> <span class=kc>false</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>					<span class=nt>&#34;access&#34;</span><span class=p>:</span> <span class=s2>&#34;rwm&#34;</span>
+</span></span><span class=line><span class=cl>				<span class=p>}</span>
+</span></span><span class=line><span class=cl>			<span class=p>]</span>
+</span></span><span class=line><span class=cl>		<span class=p>},</span>
+</span></span><span class=line><span class=cl>		<span class=nt>&#34;namespaces&#34;</span><span class=p>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>			<span class=p>{</span>
+</span></span><span class=line><span class=cl>				<span class=nt>&#34;type&#34;</span><span class=p>:</span> <span class=s2>&#34;pid&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=p>},</span>
+</span></span><span class=line><span class=cl>			<span class=p>{</span>
+</span></span><span class=line><span class=cl>				<span class=nt>&#34;type&#34;</span><span class=p>:</span> <span class=s2>&#34;network&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=p>},</span>
+</span></span><span class=line><span class=cl>			<span class=p>{</span>
+</span></span><span class=line><span class=cl>				<span class=nt>&#34;type&#34;</span><span class=p>:</span> <span class=s2>&#34;ipc&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=p>},</span>
+</span></span><span class=line><span class=cl>			<span class=p>{</span>
+</span></span><span class=line><span class=cl>				<span class=nt>&#34;type&#34;</span><span class=p>:</span> <span class=s2>&#34;uts&#34;</span>
+</span></span><span class=line><span class=cl>			<span class=p>},</span>
+</span></span><span class=line><span class=cl>			<span class=p>{</span>
+</span></span><span class=line><span class=cl>				<span class=nt>&#34;type&#34;</span><span class=p>:</span> <span class=s2>&#34;mount&#34;</span>
+</span></span><span class=line><span class=cl>			<span class=p>}</span>
+</span></span><span class=line><span class=cl>		<span class=p>],</span>
+</span></span><span class=line><span class=cl>		<span class=nt>&#34;maskedPaths&#34;</span><span class=p>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>			<span class=s2>&#34;/proc/acpi&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=s2>&#34;/proc/asound&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=s2>&#34;/proc/kcore&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=s2>&#34;/proc/keys&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=s2>&#34;/proc/latency_stats&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=s2>&#34;/proc/timer_list&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=s2>&#34;/proc/timer_stats&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=s2>&#34;/proc/sched_debug&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=s2>&#34;/sys/firmware&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=s2>&#34;/proc/scsi&#34;</span>
+</span></span><span class=line><span class=cl>		<span class=p>],</span>
+</span></span><span class=line><span class=cl>		<span class=nt>&#34;readonlyPaths&#34;</span><span class=p>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>			<span class=s2>&#34;/proc/bus&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=s2>&#34;/proc/fs&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=s2>&#34;/proc/irq&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=s2>&#34;/proc/sys&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>			<span class=s2>&#34;/proc/sysrq-trigger&#34;</span>
+</span></span><span class=line><span class=cl>		<span class=p>]</span>
+</span></span><span class=line><span class=cl>	<span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><p>运行容器</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>runc run -d <span class=nb>test</span> &gt; test.out 2&gt;<span class=p>&amp;</span><span class=m>1</span> 
+</span></span></code></pre></div><h3 id=给容器配置网络>给容器配置网络</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>yum install -y bridge-utils
+</span></span></code></pre></div><p>创建网桥</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>brctl addbr lain0
+</span></span><span class=line><span class=cl>ip link <span class=nb>set</span> lain0 up
+</span></span><span class=line><span class=cl>ip addr add 10.12.0.1/24 dev lain0
+</span></span></code></pre></div><p>创建 veth 设备</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>ip link add name veth0-host <span class=nb>type</span> veth peer name veth0-ns
+</span></span><span class=line><span class=cl>ip link <span class=nb>set</span> veth0-host up
+</span></span><span class=line><span class=cl>brctl addif lain0 veth0-host	<span class=c1># 把veth一头绑定到网桥上</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>brctl show	<span class=c1># 查看绑定</span>
+</span></span><span class=line><span class=cl>bridge name	bridge id		STP enabled	interfaces
+</span></span><span class=line><span class=cl>lain0		8000.3e46e96a3af3	no		veth0-host
+</span></span></code></pre></div><p>创建一个网络 namespace</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>ip netns add mycontainer
+</span></span><span class=line><span class=cl>ip link <span class=nb>set</span> veth0-ns netns mycontainer	<span class=c1># 把veth另一头绑定到namespace</span>
+</span></span></code></pre></div><p>设置 namespace 中的网卡名称并启动</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>ip netns <span class=nb>exec</span> mycontainer ip link <span class=nb>set</span> veth0-ns name eth0
+</span></span><span class=line><span class=cl>ip netns <span class=nb>exec</span> mycontainer ip addr add 10.12.0.2/24 dev eth0
+</span></span><span class=line><span class=cl>ip netns <span class=nb>exec</span> mycontainer ip link <span class=nb>set</span> eth0 up
+</span></span><span class=line><span class=cl>ip netns <span class=nb>exec</span> mycontainer ip addr add 127.0.0.1 dev lo
+</span></span><span class=line><span class=cl>ip netns <span class=nb>exec</span> mycontainer ip link <span class=nb>set</span> lo up
+</span></span><span class=line><span class=cl>ip netns <span class=nb>exec</span> mycontainer ip route add default via 10.12.0.1
+</span></span></code></pre></div><p>修改 config.json 配置，指定网络 namespace</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-json data-lang=json><span class=line><span class=cl><span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=nt>&#34;type&#34;</span><span class=p>:</span> <span class=s2>&#34;network&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=nt>&#34;path&#34;</span><span class=p>:</span> <span class=s2>&#34;/var/run/netns/mycontainer&#34;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span><span class=err>,</span>
+</span></span></code></pre></div><p>本地访问</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>curl 10.12.0.2
+</span></span></code></pre></div><h3 id=映射端口外网访问>映射端口外网访问</h3><p>前置配置</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>iptables -P FORWARD ACCEPT
+</span></span><span class=line><span class=cl>vi /etc/sysctl.conf
+</span></span><span class=line><span class=cl><span class=c1># 设置 net.ipv4.ip_forward = 1</span>
+</span></span><span class=line><span class=cl>sysctl -p <span class=c1># 立即生效</span>
+</span></span></code></pre></div><p>配置 iptables 规则</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>iptables -t nat -I PREROUTING -p tcp  -m tcp  --dport <span class=m>9090</span> -j DNAT --to-destination 10.12.0.2:80
+</span></span></code></pre></div><p>删除规则</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>iptables -t nat -D PREROUTING -p tcp  -m tcp  --dport <span class=m>9090</span> -j DNAT --to-destination 10.12.0.2:80
+</span></span></code></pre></div><h3 id=运行-pause-容器>运行 pause 容器</h3><p>导出镜像</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>docker pull mirrorgooglecontainers/pause-amd64:3.1
+</span></span><span class=line><span class=cl>docker tag mirrorgooglecontainers/pause-amd64:3.1 pause:3.1
+</span></span><span class=line><span class=cl>mkdir -p pause/rootfs
+</span></span><span class=line><span class=cl>docker <span class=nb>export</span> <span class=k>$(</span>docker create pause:3.1<span class=k>)</span> <span class=p>|</span> tar -C pause/rootfs -xvf -
+</span></span><span class=line><span class=cl>runc spec
+</span></span></code></pre></div><p>修改 config.json 配置</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-json data-lang=json><span class=line><span class=cl><span class=s2>&#34;terminal&#34;</span><span class=err>:</span> <span class=kc>false</span><span class=err>,</span>
+</span></span><span class=line><span class=cl><span class=s2>&#34;args&#34;</span><span class=err>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>    <span class=s2>&#34;/pause&#34;</span>
+</span></span><span class=line><span class=cl><span class=p>]</span><span class=err>,</span>
+</span></span></code></pre></div><p>运行容器</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>rc run -d pause &gt; pause.out 2&gt;<span class=p>&amp;</span><span class=m>1</span>
+</span></span></code></pre></div><h3 id=多容器网络共享>多容器网络共享</h3><p>查看刚刚启动的 pause 容器进程 id</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>runc list
+</span></span><span class=line><span class=cl>ID          PID         STATUS      BUNDLE                CREATED                          OWNER
+</span></span><span class=line><span class=cl>pause       <span class=m>22989</span>       running     /home/txl/cri/pause   2023-05-27T07:14:20.061243706Z   root
+</span></span></code></pre></div><p>之前通过 <code>ip netns</code> 创建的ns文件目录在 <code>/var/run/netns</code>，而通过 runc（或普通进程）创建的ns目录在 <code>/proc/pid/ns/net</code> 里。为他们创建软连接</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>ln -s /proc/22989/ns/net /var/run/netns/proc22989
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># 查看ns</span>
+</span></span><span class=line><span class=cl>ip netns
+</span></span><span class=line><span class=cl>proc22989 <span class=o>(</span>id: 54<span class=o>)</span>
+</span></span><span class=line><span class=cl>mycontainer <span class=o>(</span>id: 52<span class=o>)</span>
+</span></span></code></pre></div><p>创建 veth 设备并配置网络</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>ip link add name veth0-pause <span class=nb>type</span> veth peer name veth0-pause-ns
+</span></span><span class=line><span class=cl>ip link <span class=nb>set</span> veth0-pause up
+</span></span><span class=line><span class=cl>brctl addif lain0 veth0-pause
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>ip link <span class=nb>set</span> veth0-pause-ns netns proc22989
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>ip netns <span class=nb>exec</span> proc22989 ip link <span class=nb>set</span> veth0-pause-ns name eth0
+</span></span><span class=line><span class=cl>ip netns <span class=nb>exec</span> proc22989 ip addr add 10.12.0.4/24 dev eth0
+</span></span><span class=line><span class=cl>ip netns <span class=nb>exec</span> proc22989 ip link <span class=nb>set</span> eth0 up
+</span></span><span class=line><span class=cl>ip netns <span class=nb>exec</span> proc22989 ip route add default via 10.12.0.1
+</span></span></code></pre></div><p>修改 config.json 容器配置</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-json data-lang=json><span class=line><span class=cl><span class=s2>&#34;namespaces&#34;</span><span class=err>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>	<span class=p>{</span>
+</span></span><span class=line><span class=cl>		<span class=nt>&#34;type&#34;</span><span class=p>:</span> <span class=s2>&#34;pid&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>		<span class=nt>&#34;path&#34;</span><span class=p>:</span> <span class=s2>&#34;/proc/22989/ns/pid&#34;</span>	<span class=c1>// 进程命名空间共享
+</span></span></span><span class=line><span class=cl><span class=c1></span>	<span class=p>},</span>
+</span></span><span class=line><span class=cl>	<span class=p>{</span>
+</span></span><span class=line><span class=cl>		<span class=nt>&#34;type&#34;</span><span class=p>:</span> <span class=s2>&#34;network&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>		<span class=nt>&#34;path&#34;</span><span class=p>:</span> <span class=s2>&#34;/proc/22989/ns/net&#34;</span>	<span class=c1>// 网络命名空间共享
+</span></span></span><span class=line><span class=cl><span class=c1></span>	<span class=p>},</span>
+</span></span><span class=line><span class=cl>	<span class=p>{</span>
+</span></span><span class=line><span class=cl>		<span class=nt>&#34;type&#34;</span><span class=p>:</span> <span class=s2>&#34;ipc&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>		<span class=nt>&#34;path&#34;</span><span class=p>:</span> <span class=s2>&#34;/proc/22989/ns/ipc&#34;</span>
+</span></span><span class=line><span class=cl>	<span class=p>},</span>
+</span></span><span class=line><span class=cl>	<span class=p>{</span>
+</span></span><span class=line><span class=cl>		<span class=nt>&#34;type&#34;</span><span class=p>:</span> <span class=s2>&#34;uts&#34;</span>
+</span></span><span class=line><span class=cl>	<span class=p>},</span>
+</span></span><span class=line><span class=cl>	<span class=p>{</span>
+</span></span><span class=line><span class=cl>		<span class=nt>&#34;type&#34;</span><span class=p>:</span> <span class=s2>&#34;mount&#34;</span>
+</span></span><span class=line><span class=cl>	<span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>]</span><span class=err>,</span>
+</span></span></code></pre></div><p>分别启动多个容器</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>rc run -d web1 &gt; web1.out 2&gt;<span class=p>&amp;</span>1	// 8081端口
+</span></span><span class=line><span class=cl>rc run -d web2 &gt; web2.out 2&gt;<span class=p>&amp;</span>1	// 8082端口
+</span></span></code></pre></div><p>测试查看网络共享和进程共享</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>curl 10.12.0.4:8081
+</span></span><span class=line><span class=cl>curl 10.12.0.4:8082
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>runc <span class=nb>exec</span> -t web1 ps -ef
+</span></span><span class=line><span class=cl>PID   USER     TIME  COMMAND
+</span></span><span class=line><span class=cl>    <span class=m>1</span> root      0:00 /pause
+</span></span><span class=line><span class=cl>   <span class=m>77</span> root      0:00 /app/myhttp -p <span class=m>8081</span>
+</span></span><span class=line><span class=cl>   <span class=m>88</span> root      0:00 /app/myhttp -p <span class=m>8082</span>
+</span></span><span class=line><span class=cl>  <span class=m>104</span> root      0:00 ps -ef
+</span></span></code></pre></div><p><em>参考：</em></p><ul><li><em><a href=https://www.qikqiak.com/post/containerd-usage/ target=_blank rel="noopener noreffer">一文搞懂容器运行时</a></em></li><li><em><a href=https://www.huweihuang.com/kubernetes-notes/runtime/runtime.html target=_blank rel="noopener noreffer">Runc 和 Containerd 概述</a></em></li></ul></div><div class=post-footer id=post-footer><div class=post-info><div class=post-info-line><div class=post-info-mod><span>Updated on 2023-05-27&nbsp;<a class=git-hash href=https://github.com/xuliangTang/xuliangTang.github.io/commit/3941ac553a4f5bc6794dfd5d3653e44fad2038f0 target=_blank title="commit by Lain(1297441127@qq.com) 3941ac553a4f5bc6794dfd5d3653e44fad2038f0: add: runc">
+<i class="fas fa-hashtag fa-fw" aria-hidden=true></i>3941ac5</a></span></div></div><div class=post-info-line><div class=post-info-md></div><div class=post-info-share><span><a href=javascript:void(0); title="Share on Twitter" data-sharer=twitter data-url=http://xuliangtang.github.io/posts/runc/ data-title="runC 与容器运行时"><i class="fab fa-twitter fa-fw" aria-hidden=true></i></a><a href=javascript:void(0); title="Share on Facebook" data-sharer=facebook data-url=http://xuliangtang.github.io/posts/runc/><i class="fab fa-facebook-square fa-fw" aria-hidden=true></i></a><a href=javascript:void(0); title="Share on Hacker News" data-sharer=hackernews data-url=http://xuliangtang.github.io/posts/runc/ data-title="runC 与容器运行时"><i class="fab fa-hacker-news fa-fw" aria-hidden=true></i></a><a href=javascript:void(0); title="Share on Line" data-sharer=line data-url=http://xuliangtang.github.io/posts/runc/ data-title="runC 与容器运行时"><i data-svg-src=https://cdn.jsdelivr.net/npm/simple-icons@7.3.0/icons/line.svg aria-hidden=true></i></a><a href=javascript:void(0); title="Share on 微博" data-sharer=weibo data-url=http://xuliangtang.github.io/posts/runc/ data-title="runC 与容器运行时"><i class="fab fa-weibo fa-fw" aria-hidden=true></i></a></span></div></div></div><div class=post-info-more><section class=post-tags></section><section><span><a href=javascript:void(0); onclick=window.history.back()>Back</a></span>&nbsp;|&nbsp;<span><a href=/>Home</a></span></section></div><div class=post-nav><a href=/posts/linux_cgroup/ class=prev rel=prev title="Linux 资源管理之 cgroup"><i class="fas fa-angle-left fa-fw" aria-hidden=true></i>Linux 资源管理之 cgroup</a></div></div></article></div></main><footer class=footer><div class=footer-container><div class=footer-line>Powered by <a href=https://gohugo.io/ target=_blank rel="noopener noreffer" title="Hugo 0.108.0">Hugo</a> | Theme - <a href=https://github.com/dillonzq/LoveIt target=_blank rel="noopener noreffer" title="LoveIt 0.2.11"><i class="far fa-kiss-wink-heart fa-fw" aria-hidden=true></i> LoveIt</a></div><div class=footer-line itemscope itemtype=http://schema.org/CreativeWork><i class="far fa-copyright fa-fw" aria-hidden=true></i><span itemprop=copyrightYear>2022 - 2023</span><span class=author itemprop=copyrightHolder>&nbsp;<a href=/ target=_blank>xuliangTang</a></span></div></div></footer></div><div id=fixed-buttons><a href=# id=back-to-top class=fixed-button title="Back to Top"><i class="fas fa-arrow-up fa-fw" aria-hidden=true></i>
+</a><a href=# id=view-comments class=fixed-button title="View Comments"><i class="fas fa-comment fa-fw" aria-hidden=true></i></a></div><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css><script type=text/javascript src=https://cdn.jsdelivr.net/npm/autocomplete.js@0.38.1/dist/autocomplete.min.js></script><script type=text/javascript src=https://cdn.jsdelivr.net/npm/algoliasearch@4.13.1/dist/algoliasearch-lite.umd.min.js></script><script type=text/javascript src=https://cdn.jsdelivr.net/npm/lazysizes@5.3.2/lazysizes.min.js></script><script type=text/javascript src=https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js></script><script type=text/javascript src=https://cdn.jsdelivr.net/npm/sharer.js@0.5.1/sharer.min.js></script><script type=text/javascript src=https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.js></script><script type=text/javascript src=https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/contrib/auto-render.min.js></script><script type=text/javascript src=https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/contrib/copy-tex.min.js></script><script type=text/javascript src=https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/contrib/mhchem.min.js></script><script type=text/javascript>window.config={code:{copyTitle:"Copy to clipboard",maxShownLines:100},comment:{},math:{delimiters:[{display:!0,left:"$$",right:"$$"},{display:!0,left:"\\[",right:"\\]"},{display:!0,left:"\\begin{equation}",right:"\\end{equation}"},{display:!0,left:"\\begin{equation*}",right:"\\end{equation*}"},{display:!0,left:"\\begin{align}",right:"\\end{align}"},{display:!0,left:"\\begin{align*}",right:"\\end{align*}"},{display:!0,left:"\\begin{alignat}",right:"\\end{alignat}"},{display:!0,left:"\\begin{alignat*}",right:"\\end{alignat*}"},{display:!0,left:"\\begin{gather}",right:"\\end{gather}"},{display:!0,left:"\\begin{CD}",right:"\\end{CD}"},{display:!1,left:"$",right:"$"},{display:!1,left:"\\(",right:"\\)"}],strict:!1},search:{algoliaAppID:"4ZKRIKL2L6",algoliaIndex:"dev_lain",algoliaSearchKey:"2da9b5e339083fde5fe030c2345f5499",highlightTag:"em",maxResultLength:10,noResultsFound:"No results found",snippetLength:80,type:"algolia"}}</script><script type=text/javascript src=/js/theme.min.js></script></body></html>
