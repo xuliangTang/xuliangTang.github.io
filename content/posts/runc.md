@@ -5,16 +5,29 @@ draft: false
 Categories: [kubernetes]
 ---
 
-[RunC](https://github.com/opencontainers/runc) 是用来运行容器的一个轻量级工具。被称为运行容器的运行时，它负责利用符合标准的文件 OCI（Open Container Initiative）标准等资源运行容器：
+[RunC](https://github.com/opencontainers/runc) 是用来运行容器的一个轻量级工具。被称为运行容器的运行时，它负责利用符合标准的文件 OCI（Open Container Initiative）标准等资源运行容器
 
-- [Open Container Initiative Runtime Specification](https://github.com/opencontainers/runtime-spec/blob/main/spec.md)：指定容器的配置、执行环境和生命周期
-- [Open Container Initiative Image Specification](https://github.com/opencontainers/image-spec/blob/main/spec.md)：定义了如何创建一个符合规范的镜像， 规定了镜像需要输出的内容和格式
+
+
+## OCI 规范
+
+OCI（Open Container Initiative）规范是事实上的容器标准，已经被大部分容器实现以及容器编排系统所采用，包括 Docker 和 Kubernetes。它的出现是一段关于开源商业化的有趣历史：它由 Dokcer 公司作为领头者在 2015 年推出，但如今 Docker 公司在容器行业中已经成了打工仔。
+
+从 OCI 规范开始了解容器镜像，可以让我们对容器技术建立更全面清晰的认知，而不是囿于实现细节。OCI 目前提出的规范有如下这些，它们分别覆盖了容器生命周期的不同阶段
+
+- [Runtime Specification](https://github.com/opencontainers/runtime-spec/blob/main/spec.md)：运行时规范指定容器的配置、执行环境和生命周期
+- [Image Format](https://github.com/opencontainers/image-spec/blob/main/spec.md)：镜像规范定义了如何创建一个符合规范的镜像， 规定了镜像需要输出的内容和格式
+- [Distribution Specification](https://github.com/opencontainers/distribution-spec/blob/main/spec.md)：分发规范定义了一个 API 协议来促进和标准化内容的分发
+
+![img](https://raw.githubusercontent.com/xuliangTang/picbeds/main/picgo/202305281643347.png)
 
 譬如当我们执行 `docker run alpine sh` 的时候：
 
 1. 到了 shim 环节后，shim 启动 runc
 2. runC 负责找到 alpine 这个镜像文件中的 sh 程序并运行
 3. 交给它的父进程 shim 接管 sh 这个进程
+
+
 
 ## Docker
 
@@ -62,7 +75,7 @@ CRI 定义的 [API](https://github.com/kubernetes/kubernetes/blob/release-1.5/pk
 
 ## 实验
 
-RunC 是运行容器的运行时，它负责利用符合标准的文件等资源运行容器，但是它不包含 docker 那样的镜像管理功能。所以要用 runC 运行容器，我们先得准备好容器的文件系统。所谓的 OCI bundle 就是指容器的文件系统和一个 config.json 文件。有了容器的文件系统后我们可以通过 runc spec 命令来生成 config.json 文件。使用 docker 可轻松的生成容器的文件系统，因为 runC 本来就是 docker 贡献给社区的嘛！
+RunC 是运行容器的运行时，是 OCI Runtime 的参考实现。它负责利用符合标准的文件等资源运行容器，但是它不包含 docker 那样的镜像管理功能。所以要用 runC 运行容器，我们先得准备好容器的文件系统。所谓的 OCI bundle 就是指容器的文件系统和一个 config.json 文件。有了容器的文件系统后我们可以通过 runc spec 命令来生成 config.json 文件。使用 docker 可轻松的生成容器的文件系统，因为 runC 本来就是 docker 贡献给社区的嘛！
 
 ```bash
 # 准备 OCI bundle
@@ -464,7 +477,99 @@ PID   USER     TIME  COMMAND
   104 root      0:00 ps -ef
 ```
 
+### 使用 umoci  制作镜像文件
+
+runc 需要 OCI Runtime Bundle，我们需要一个将镜像转换为解压包的工具。这个工具将是 [umoci](https://github.com/opencontainers/umoci) ，其唯一目的是操作 OCI 镜像以及与容器镜像交互
+
+```bash
+umoci init --layout myimage
+umoci new --image myimage:v1
+umoci unpack --image myimage:v1 bundle	# 将image提取到一个文件夹中
+ls bundle	# 查看bundle文件夹
+config.json  rootfs  sha256_26ae9613658fba5cce7e44f77431bff7b6b594999df39977c5416154ed8ae68c.mtree  umoci.json
+```
+
+将 alpine 镜像的 rootfs 目录复制到创建的 bundle 目录
+
+```bash
+cp alpine/rootfs bundle -R
+```
+
+重新 pack
+
+```bash
+umoci repack --image myimage:v1 bundle
+```
+
+查看镜像状态
+
+```bash
+umoci ls --layout myimage
+v1
+umoci stat --image myimage:v1
+LAYER                    CREATED                             CREATED BY   SIZE        COMMENT
+sha256:d54045c2d86e8e... 2023-05-28T16:10:10.803014564+08:00 umoci repack 2.931MB
+```
+
+使用 runc 运行 OCI 应用程序包
+
+```bash
+cd bundle
+runc run test
+```
+
+### 代码获取镜像信息
+
+使用 [go-containerregistry](https://github.com/google/go-containerregistry) 库
+
+```go
+func main() {
+	img := "docker.io/alpine:3.12"
+	parseImage(img)
+}
+
+// GET /v2/<name>/manifests/<reference>
+func parseImage(img string, options ...name.Option) {
+	ref, err := name.ParseReference(img, options...)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	des, err := remote.Get(ref) // 获取镜像描述信息 ....  http 请求
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	if des.MediaType.IsImage() { // image模式
+		img, _ := des.Image()
+		config, _ := img.ConfigFile()
+
+		fmt.Println(config.OS, "/", config.Architecture, ":", config.Config.Entrypoint, config.Config.Cmd)
+
+	} else if des.MediaType.IsIndex() { // index模式
+		idx, _ := des.ImageIndex()
+		mf, _ := idx.IndexManifest()
+
+		for _, d := range mf.Manifests {
+			img, _ := idx.Image(d.Digest)
+			conf, _ := img.ConfigFile()
+
+			fmt.Println(conf.OS, "/", conf.Architecture, ":", conf.Config.Entrypoint, conf.Config.Cmd)
+		}
+	}
+}
+```
+
+镜像清单类型参考文档：
+
+[image-spec/media-types.md](https://github.com/opencontainers/image-spec/blob/main/media-types.md)
+
+[Image Manifest V 2, Schema 2](https://docs.docker.com/registry/spec/manifest-v2-2/)
+
+
+
 *参考：*
 
 - *[一文搞懂容器运行时](https://www.qikqiak.com/post/containerd-usage/)*
 - *[Runc 和 Containerd 概述](https://www.huweihuang.com/kubernetes-notes/runtime/runtime.html)*
+- *[真正运行容器的工具：深入了解 runc 和 OCI 规范](https://zhuanlan.zhihu.com/p/438353377)*
