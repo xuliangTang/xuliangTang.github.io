@@ -568,6 +568,161 @@ func parseImage(img string, options ...name.Option) {
 
 
 
+## Containerd
+
+我们知道很早之前的 Docker Engine 中就有了 containerd，只不过现在是将 containerd 从 Docker Engine 里分离出来，作为一个独立的开源项目，目标是提供一个更加开放、稳定的容器运行基础设施。分离出来的 containerd 将具有更多的功能，涵盖整个容器运行时管理的所有需求，提供更强大的支持。
+
+containerd 是一个工业级标准的容器运行时，它强调简单性、健壮性和可移植性，containerd 可以负责干下面这些事情：
+
+- 管理容器的生命周期（从创建容器到销毁容器）
+- 拉取/推送容器镜像
+- 存储管理（管理镜像及容器数据的存储）
+- 调用 runc 运行容器（与 runc 等容器运行时交互）
+- 管理容器网络接口及网络
+
+### 安装 Containerd
+
+确保先关闭和禁用 Firewalld、SELinux、Swap
+
+```bash
+su -
+yum install -y yum-utils 
+yum-config-manager  --add-repo https://download.docker.com/linux/centos/docker-ce.repo 
+yum install containerd -y
+```
+
+释放一个默认配置文件
+
+```bash
+containerd config default > /etc/containerd/config.toml
+```
+
+修改配置
+
+```bash
+# 1
+[plugins."io.containerd.grpc.v1.cri"]
+  sandbox_image = "registry.cn-hangzhou.aliyuncs.com/google_containers/pause:3.6"
+    
+# 2
+[plugins."io.containerd.grpc.v1.cri".registry]
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+      endpoint = ["docker加速器地址"]
+        
+# 3
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+  SystemdCgroup = true
+```
+
+启动
+
+```bash
+systemctl daemon-reload && systemctl start containerd
+systemctl enable containerd
+
+# 查看状态
+systemctl status containerd
+```
+
+### 安装 crictl 工具
+
+从 [kubernetes-sigs/cri-tools](https://github.com/kubernetes-sigs/cri-tools) 安装
+
+修改配置
+
+```bash
+cat > /etc/crictl.yaml <<EOF
+runtime-endpoint: unix:///run/containerd/containerd.sock
+image-endpoint: unix:///run/containerd/containerd.sock
+timeout: 10
+EOF
+```
+
+查看镜像列表
+
+```bash
+crictl images
+```
+
+### k8s 部署使用 containerd
+
+加入源
+
+```bash
+cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64/
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg
+        https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
+EOF
+
+yum makecache
+```
+
+安装
+
+```bash
+yum -y install kubelet-1.26.0 kubeadm-1.26.0 kubectl-1.26.0
+
+# 查看
+rpm -aq kubelet kubectl kubeadm
+```
+
+允许数据包转发
+
+```bash
+echo 1 > /proc/sys/net/ipv4/ip_forward
+modprobe br_netfilter
+echo 1 > /proc/sys/net/bridge/bridge-nf-call-iptables
+```
+
+设置 kubelet 开机启动
+
+```bash
+systemctl enable kubelet
+```
+
+修改配置
+
+```bash
+cat <<EOF | sudo tee /etc/sysctl.d/99-kubernetes-cri.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.ipv4.ip_forward                 = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+EOF
+
+cat > /etc/sysconfig/kubelet << EOF
+KUBELET_EXTRA_ARGS=--cgroup-driver=systemd
+EOF
+```
+
+初始化集群（指定 --cri-socket）
+
+```bash
+kubeadm init --image-repository registry.cn-hangzhou.aliyuncs.com/google_containers  --kubernetes-version=1.26.0 --pod-network-cidr=10.244.0.0/16 --service-cidr=10.96.0.0/12  --cri-socket=unix:///run/containerd/containerd.sock
+```
+
+安装 flannel
+
+```bash
+sysctl net.bridge.bridge-nf-call-iptables=1
+kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+```
+
+加入子节点（指定 --cri-socket）
+
+```bash
+kubeadm join 10.0.1.21:6443 --token itbtmj.x2sju400e1f4eywy \
+	--discovery-token-ca-cert-hash sha256:e2769eee28d459a46e428b376a48695f0cc73bd756b3e1dc326eabf55dba185a --cri-socket=unix:///run/containerd/containerd.sock
+```
+
+
+
 *参考：*
 
 - *[一文搞懂容器运行时](https://www.qikqiak.com/post/containerd-usage/)*
