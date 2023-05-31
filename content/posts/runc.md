@@ -584,6 +584,8 @@ containerd 是一个工业级标准的容器运行时，它强调简单性、健
 
 确保先关闭和禁用 Firewalld、SELinux、Swap
 
+**使用 yum 安装**
+
 ```bash
 su -
 yum install -y yum-utils 
@@ -591,15 +593,54 @@ yum-config-manager  --add-repo https://download.docker.com/linux/centos/docker-c
 yum install containerd -y
 ```
 
-释放一个默认配置文件
+**使用二进制安装包安装**
+
+下载 [containerd](https://github.com/containerd/containerd/releases) 并解压到环境变量目录
 
 ```bash
+tar zxvf containerd-1.5.9-linux-amd64.tar.gz
+cp -r bin/* /usr/local/bin/
+```
+
+创建 systemd service 启动管理文件 `/etc/systemd/system/containerd.service`
+
+```toml
+[Unit]
+Description=containerd container runtime
+Documentation=https://containerd.io
+ 
+[Service]
+ExecStart=/usr/local/containerd/bin/containerd
+ 
+Type=notify
+Delegate=yes
+KillMode=process
+Restart=always
+RestartSec=5
+# Having non-zero Limit*s causes performance problems due to accounting overhead
+# in the kernel. We recommend using cgroups to do container-local accounting.
+LimitNPROC=infinity
+LimitCORE=infinity
+LimitNOFILE=infinity
+# Comment TasksMax if your systemd version does not supports it.
+# Only systemd 226 and above support this version.
+TasksMax=infinity
+OOMScoreAdjust=-999
+ 
+[Install]
+WantedBy=multi-user.target
+```
+
+**生成一个默认配置文件**
+
+```bash
+mkdir /etc/containerd
 containerd config default > /etc/containerd/config.toml
 ```
 
-修改配置
+**修改配置**
 
-```bash
+```toml
 # 1
 [plugins."io.containerd.grpc.v1.cri"]
   sandbox_image = "registry.cn-hangzhou.aliyuncs.com/google_containers/pause:3.6"
@@ -615,10 +656,11 @@ containerd config default > /etc/containerd/config.toml
   SystemdCgroup = true
 ```
 
-启动
+**启动 containerd 并设置开机自启动**
 
 ```bash
-systemctl daemon-reload && systemctl start containerd
+systemctl daemon-reload		# 重新加载系统管理服务文件
+systemctl start containerd
 systemctl enable containerd
 
 # 查看状态
