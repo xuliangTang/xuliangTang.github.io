@@ -770,3 +770,4 @@ kubeadm join 10.0.1.21:6443 --token itbtmj.x2sju400e1f4eywy \
 - *[一文搞懂容器运行时](https://www.qikqiak.com/post/containerd-usage/)*
 - *[Runc 和 Containerd 概述](https://www.huweihuang.com/kubernetes-notes/runtime/runtime.html)*
 - *[真正运行容器的工具：深入了解 runc 和 OCI 规范](https://zhuanlan.zhihu.com/p/438353377)*
+- *[Containerd 容器运行时初识](https://blog.weiyigeek.top/2021/6-27-570.html)*
