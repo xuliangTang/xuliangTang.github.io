@@ -17,7 +17,13 @@ Horizontal Pod Autoscaling（Pod 水平自动伸缩），简称HPA。它可以�
 
 ## Metrics Server
 
-Metrics Server 可以通过标准的 Kubernetes Summary API 把监控数据暴露出来，有了 Metrics Server 之后，就可以采集节点和 Pod 的内存、磁盘、CPU 和网络的使用率等。Metrics API URI 为 ``/apis/metrics.k8s.io/ ``
+Metrics Server 可以通过标准的 Kubernetes Summary API 把监控数据暴露出来，指标接口来源于 kubelet，而 kubelet 又来自于内置的cadvisor。有了 Metrics Server 之后，就可以采集节点和 Pod 的内存、磁盘、CPU 和网络的使用率等。Metrics API URI 为 ``/apis/metrics.k8s.io/ ``
+
+可以直接通过访问获取指标数据
+
+```bash
+curl --cert /etc/kubernetes/pki/apiserver-kubelet-client.crt --key /etc/kubernetes/pki/apiserver-kubelet-client.key https://localhost:10250/metrics --insecure
+```
 
 ### 安装
 
@@ -42,6 +48,8 @@ $ kubectl logs -f metrics-server-7d8467779f-vgtzb -n kube-system
 
 ### 查看
 
+查看 top
+
 ```bash
 $ kubectl top nodes
 NAME    CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%   
@@ -51,6 +59,13 @@ lain2   208m         10%    2786Mi          75%
 $ kubectl top pod etcd-lain1 -n kube-system
 NAME         CPU(cores)   MEMORY(bytes)   
 etcd-lain1   20m          249Mi
+```
+
+获取原始数据
+
+```bash
+kubectl get --raw /apis/metrics.k8s.io/v1beta1/nodes
+kubectl get --raw /apis/metrics.k8s.io/v1beta1/pods
 ```
 
 
