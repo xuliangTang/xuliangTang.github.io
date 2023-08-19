@@ -26,16 +26,67 @@ Istio 服务网格有两个部分：数据平面和控制平面
 
 ## 安装
 
-从 [Github](https://github.com/istio/istio/releases) 上下载 Istio， (测试环境) 执行
+从 [Github](https://github.com/istio/istio/releases) 上下载
+
+```bash
+# 查看内置配置文件内容
+istioctl profile dump demo
+istioctl profile dump --config-path components.ingressGateways
+```
+
+### demo环境
 
 ```bash
 istioctl manifest apply --set profile=demo
 ```
 
-可以查看其中的配置
+### 配置文件安装
+
+首先使用 istioctl 安装控制平面组件
 
 ```bash
-istioctl profile dump demo
+istioctl install --set profile=minimal
+```
+
+编写 [IstioOperator](https://istio.io/latest/zh/docs/setup/additional-setup/gateway/) 配置文件，示例如下：
+
+```yaml
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  name: ingress
+spec:
+  profile: minimal
+  meshConfig:
+    outboundTrafficPolicy:
+      mode: REGISTRY_ONLY # 阻止未注册的外部访问
+  components:
+    ingressGateways:
+      - name: ingressgateway
+        namespace: istio-system
+        enabled: true
+        label:
+          istio: ingressgateway
+        k8s:
+          service:  # 设置ingressgateway service
+            type: ClusterIP
+  values:
+    gateways:
+      istio-ingressgateway:
+        # Enable gateway injection
+        injectionTemplate: gateway
+```
+
+然后执行
+
+```bash
+istioctl instal -f xxx.yaml
+```
+
+卸载
+
+```bash
+istioctl x uninstall --purge
 ```
 
 
