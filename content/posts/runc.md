@@ -69,7 +69,7 @@ CRI 定义的 [API](https://github.com/kubernetes/kubernetes/blob/release-1.5/pk
 
 `dockershim` 收到请求后, 转化成 Docker Daemon 能识别的请求, 发到 Docker Daemon 上请求创建一个容器，请求到了 Docker Daemon 后续就是 Docker 创建容器的流程了，去调用 `containerd`，然后创建 `containerd-shim` 进程，通过该进程去调用 `runc` 去真正创建容器
 
-![切换到containerd](https://bxdc-static.oss-cn-beijing.aliyuncs.com/images/20210810094948.png)
+![img](https://raw.githubusercontent.com/xuliangTang/picbeds/main/typora/202308311549505.png)
 
 
 
