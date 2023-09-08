@@ -220,6 +220,99 @@ hping3 -I eth0 -c 1 -a 192.168.10.60 192.168.0.111 --syn -p 8080
 
 
 
+### 构建原始数据包
+
+```go
+func main() {
+	srcMac, _ := net.ParseMAC("fa:16:3e:9f:f7:66")  // 发送端MAC
+	distMac, _ := net.ParseMAC("fa:16:3e:9f:f7:60") // 接收端
+
+	srcIP := net.ParseIP("192.168.0.111")                 // 发送端IP
+	dstIP, _ := net.ResolveIPAddr("ip4", "192.168.0.105") // 接收端
+	_, srcPort := getLocalIP(dstIP.IP)
+
+	// 链路层
+	eth := layers.Ethernet{
+		SrcMAC:       srcMac,                  // 发送端MAC
+		DstMAC:       distMac,                 // 接收端
+		EthernetType: layers.EthernetTypeIPv4, // 类型为ipv4
+	}
+
+	// IP层
+	ipLayer := layers.IPv4{
+		SrcIP:    srcIP,
+		DstIP:    dstIP.IP,
+		Version:  4,
+		TTL:      64,
+		Protocol: layers.IPProtocolTCP,
+	}
+
+	// 四层tcp
+	tcpLayer := layers.TCP{
+		SrcPort: layers.TCPPort(srcPort),
+		DstPort: layers.TCPPort(8266), // 目标端口
+	}
+
+	// 构建应用数据原始包
+	data := []byte(`hello`)
+	payload := gopacket.Payload(data)
+
+	if err := tcpLayer.SetNetworkLayerForChecksum(&ipLayer); err != nil {
+		log.Fatalln(err)
+	}
+	buf := gopacket.NewSerializeBuffer()
+	opts := gopacket.SerializeOptions{
+		FixLengths:       true,
+		ComputeChecksums: true,
+	}
+	if err := gopacket.SerializeLayers(buf, opts, &eth, &ipLayer, &tcpLayer, payload); err != nil {
+		log.Fatalln(err)
+	}
+
+	// 打开eth0网卡
+	handle, err := pcap.OpenLive("eth0", 2048, false, 30*time.Second)
+	if err != nil {
+		log.Fatal("pcap打开网络设备失败:", err)
+	}
+	defer handle.Close()
+	// 向网络设备发包
+	err = handle.WritePacketData(buf.Bytes())
+	if err != nil {
+		log.Fatal("发送数据失败:", err)
+	}
+	log.Println("数据包已经发送")
+}
+
+func getLocalIP(dstip net.IP) (net.IP, int) {
+	serverAddr, err := net.ResolveUDPAddr("udp", dstip.String()+":23456")
+	if err != nil {
+		log.Fatal(err)
+	}
+	if con, err := net.DialUDP("udp", nil, serverAddr); err == nil {
+		if udpaddr, ok := con.LocalAddr().(*net.UDPAddr); ok {
+			return udpaddr.IP, udpaddr.Port
+		}
+	}
+	log.Fatal("could not get local ip: " + err.Error())
+	return nil, -1
+}
+
+func check(prefix string, err error) {
+	if err != nil {
+		log.Fatalln(prefix, err.Error())
+	}
+}
+```
+
+使用 tcpdump 抓包
+
+```bash
+tcpdump -i eth0 port 8266 -vv -xx
+```
+
+
+
 *参考：*
 
 - *[TCP 三次握手与四次挥手面试题](https://www.xiaolincoding.com/network/3_tcp/tcp_interview.html)*
+
