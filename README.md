@@ -26,6 +26,7 @@
 - May 27, 2023 [runC 与容器运行时](https://xuliangtang.github.io/posts/runc/)
 - August 03, 2023 [kubectl exec 原理](https://xuliangtang.github.io/posts/kubectl-exec/)
 - August 06, 2023 [Cert Manager 签发证书](https://xuliangtang.github.io/posts/cert-manager/)
+- November 10, 2023 [Knative 入门](https://xuliangtang.github.io/posts/knative/)
 
 
 
